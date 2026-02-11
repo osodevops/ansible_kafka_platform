@@ -8,8 +8,6 @@ authors:
 description: >-
   Production-ready Apache Kafka deployment with KRaft consensus,
   TLS/SASL security, and full monitoring stack (Prometheus, Grafana, Kafka UI).
-license:
-  - Apache-2.0
 license_file: LICENSE
 tags:
   - kafka
