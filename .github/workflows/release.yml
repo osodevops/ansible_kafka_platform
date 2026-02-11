@@ -5,6 +5,11 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 1.0.0)"
+        required: true
 
 permissions:
   contents: write
@@ -34,21 +39,25 @@ jobs:
       - name: Install Galaxy dependencies
         run: ansible-galaxy collection install -r requirements.yml
 
-      - name: Extract version from tag
+      - name: Extract version
         id: version
         run: |
-          TAG="${GITHUB_REF#refs/tags/v}"
-          echo "version=${TAG}" >> "$GITHUB_OUTPUT"
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            TAG="${GITHUB_REF#refs/tags/v}"
+            echo "version=${TAG}" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Verify tag matches galaxy.yml version
+      - name: Verify galaxy.yml version
         run: |
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          EXPECTED="${{ steps.version.outputs.version }}"
           GALAXY_VERSION=$(grep '^version:' galaxy.yml | awk '{print $2}')
-          if [ "$TAG_VERSION" != "$GALAXY_VERSION" ]; then
-            echo "::error::Tag version ($TAG_VERSION) does not match galaxy.yml version ($GALAXY_VERSION)"
+          if [ "$EXPECTED" != "$GALAXY_VERSION" ]; then
+            echo "::error::Expected version ($EXPECTED) does not match galaxy.yml version ($GALAXY_VERSION)"
             exit 1
           fi
-          echo "Version $TAG_VERSION validated"
+          echo "Version $EXPECTED validated"
 
       - name: Run yamllint
         run: yamllint .
@@ -93,26 +102,39 @@ jobs:
     name: Publish to Ansible Galaxy
     runs-on: ubuntu-latest
     needs: [validate, build]
-    if: secrets.GALAXY_TOKEN != ''
+    env:
+      GALAXY_TOKEN: ${{ secrets.GALAXY_TOKEN }}
     steps:
+      - name: Check for Galaxy token
+        run: |
+          if [ -z "$GALAXY_TOKEN" ]; then
+            echo "::warning::GALAXY_TOKEN secret not set — skipping Galaxy publish"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+        id: check
+
       - name: Download build artifact
+        if: steps.check.outputs.skip != 'true'
         uses: actions/download-artifact@v4
         with:
           name: collection-tarball
 
       - name: Set up Python
+        if: steps.check.outputs.skip != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install Ansible
+        if: steps.check.outputs.skip != 'true'
         run: pip install ansible-core
 
       - name: Publish to Ansible Galaxy
+        if: steps.check.outputs.skip != 'true'
         run: >
           ansible-galaxy collection publish
           osodevops-kafka_platform-${{ needs.validate.outputs.version }}.tar.gz
-          --api-key "${{ secrets.GALAXY_TOKEN }}"
+          --api-key "$GALAXY_TOKEN"
 
   github-release:
     name: Create GitHub Release
