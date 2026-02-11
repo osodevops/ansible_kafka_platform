@@ -94,7 +94,7 @@ jobs:
           echo "Built: $TARBALL ($(du -h "$TARBALL" | cut -f1))"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: collection-tarball
           path: osodevops-kafka_platform-${{ needs.validate.outputs.version }}.tar.gz

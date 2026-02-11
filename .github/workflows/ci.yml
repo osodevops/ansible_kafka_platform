@@ -61,7 +61,7 @@ jobs:
         run: test -f osodevops-kafka_platform-*.tar.gz
 
       - name: Upload collection artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: collection-tarball
           path: osodevops-kafka_platform-*.tar.gz
