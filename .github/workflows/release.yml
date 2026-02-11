@@ -103,7 +103,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate, build]
     env:
-      GALAXY_TOKEN: ${{ secrets.GALAXY_TOKEN }}
+      GALAXY_TOKEN: ${{ secrets.GALAXY_API_KEY }}
     steps:
       - name: Check for Galaxy token
         run: |
