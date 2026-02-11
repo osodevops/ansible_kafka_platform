@@ -134,6 +134,7 @@ jobs:
         run: >
           ansible-galaxy collection publish
           osodevops-kafka_platform-${{ needs.validate.outputs.version }}.tar.gz
+          --server https://galaxy.ansible.com/
           --api-key "$GALAXY_TOKEN"
 
   github-release:
