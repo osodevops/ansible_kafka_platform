@@ -1,6 +1,6 @@
 ---
 galaxy_info:
-  author: OSO DevOps
+  author: OSO
   description: Deploy Prometheus for Kafka monitoring
   license: Apache-2.0
   min_ansible_version: "2.16"

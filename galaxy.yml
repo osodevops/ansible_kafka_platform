@@ -4,7 +4,7 @@ name: kafka_platform
 version: 1.0.0
 readme: README.md
 authors:
-  - OSO DevOps <info@osodevops.io>
+  - OSO <info@osodevops.io>
 description: >-
   Production-ready Apache Kafka deployment with KRaft consensus,
   TLS/SASL security, and full monitoring stack (Prometheus, Grafana, Kafka UI).
