@@ -87,7 +87,7 @@ jobs:
         run: |
           if grep -rni --include='*.yml' --include='*.yaml' --include='*.j2' --include='*.json' \
             -E 'market.research|feedmon|ssgen|selection-service|vm-kaf' \
-            --exclude-dir=.git --exclude-dir=venv . ; then
+            --exclude-dir=.git --exclude-dir=venv --exclude-dir=.github . ; then
             echo "::error::Found client-specific references in source files"
             exit 1
           fi

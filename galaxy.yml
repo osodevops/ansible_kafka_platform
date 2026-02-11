@@ -40,3 +40,4 @@ build_ignore:
   - "*.tar.gz"
   - venv
   - __pycache__
+  - requirements.txt
