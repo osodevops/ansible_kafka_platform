@@ -1,7 +1,7 @@
 ---
 namespace: osodevops
 name: kafka_platform
-version: 1.0.0
+version: 1.0.1
 readme: README.md
 authors:
   - OSO <info@osodevops.io>
@@ -24,10 +24,10 @@ dependencies:
   ansible.posix: "*"
   community.general: ">=5.0.0"
   community.crypto: ">=2.0.0"
-repository: https://github.com/osodevops/ansible-kafka-platform
-documentation: https://github.com/osodevops/ansible-kafka-platform/blob/main/README.md
-homepage: https://github.com/osodevops/ansible-kafka-platform
-issues: https://github.com/osodevops/ansible-kafka-platform/issues
+repository: https://github.com/osodevops/ansible_kafka_platform
+documentation: https://github.com/osodevops/ansible_kafka_platform/blob/main/README.md
+homepage: https://oso.sh/fully-managed-kafka/
+issues: https://github.com/osodevops/ansible_kafka_platform/issues
 build_ignore:
   - .github
   - .gitignore
