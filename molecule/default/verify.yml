@@ -1,0 +1,522 @@
+---
+# =============================================================================
+# Molecule Default Scenario — Verification (~60 assertions)
+# =============================================================================
+
+# ---- Common role assertions ----
+- name: "Verify: Common role"
+  hosts: kafka
+  gather_facts: true
+  tasks:
+    # --- Java ---
+    - name: Check Java 21 is installed
+      ansible.builtin.command: "{{ java_home }}/bin/java -version"
+      register: java_check
+      changed_when: false
+
+    - name: Assert Java 21 is available
+      ansible.builtin.assert:
+        that:
+          - java_check.rc == 0
+          - "'21' in java_check.stderr"
+        fail_msg: "Java 21 is not installed or not the expected version"
+
+    - name: Check JAVA_HOME is set in /etc/environment
+      ansible.builtin.command: grep JAVA_HOME /etc/environment
+      register: java_home_check
+      changed_when: false
+
+    - name: Assert JAVA_HOME is configured
+      ansible.builtin.assert:
+        that:
+          - "java_home in java_home_check.stdout"
+        fail_msg: "JAVA_HOME not set in /etc/environment"
+
+    # --- User / Group ---
+    - name: Get kafka user info
+      ansible.builtin.command: id kafka
+      register: kafka_user_check
+      changed_when: false
+
+    - name: Assert kafka user exists
+      ansible.builtin.assert:
+        that:
+          - kafka_user_check.rc == 0
+        fail_msg: "kafka user does not exist"
+
+    - name: Get kafka group info
+      ansible.builtin.command: getent group kafka
+      register: kafka_group_check
+      changed_when: false
+
+    - name: Assert kafka group exists
+      ansible.builtin.assert:
+        that:
+          - kafka_group_check.rc == 0
+        fail_msg: "kafka group does not exist"
+
+    # --- Sysctl ---
+    - name: Check sysctl config file exists
+      ansible.builtin.stat:
+        path: /etc/sysctl.d/99-kafka.conf
+      register: sysctl_stat
+
+    - name: Assert sysctl config deployed
+      ansible.builtin.assert:
+        that:
+          - sysctl_stat.stat.exists
+        fail_msg: "Kafka sysctl config not found"
+
+    # --- Limits ---
+    - name: Check limits config file exists
+      ansible.builtin.stat:
+        path: /etc/security/limits.d/99-kafka.conf
+      register: limits_stat
+
+    - name: Assert limits config deployed
+      ansible.builtin.assert:
+        that:
+          - limits_stat.stat.exists
+        fail_msg: "Kafka limits config not found"
+
+    # --- Data directories ---
+    - name: Check data directory exists
+      ansible.builtin.stat:
+        path: /data/kafka
+      register: data_dir_stat
+
+    - name: Assert data directory exists
+      ansible.builtin.assert:
+        that:
+          - data_dir_stat.stat.exists
+          - data_dir_stat.stat.isdir
+        fail_msg: "Kafka data directory /data/kafka not found"
+
+    - name: Check log directory exists
+      ansible.builtin.stat:
+        path: "{{ kafka_log_dir }}"
+      register: log_dir_stat
+
+    - name: Assert log directory exists
+      ansible.builtin.assert:
+        that:
+          - log_dir_stat.stat.exists
+          - log_dir_stat.stat.isdir
+        fail_msg: "Kafka log directory not found"
+
+# ---- kafka_install role assertions ----
+- name: "Verify: kafka_install role"
+  hosts: kafka
+  gather_facts: false
+  tasks:
+    # --- Directory tree ---
+    - name: Check Kafka base directory
+      ansible.builtin.stat:
+        path: "{{ kafka_base_dir }}"
+      register: base_dir_stat
+
+    - name: Assert Kafka base directory exists
+      ansible.builtin.assert:
+        that:
+          - base_dir_stat.stat.exists
+          - base_dir_stat.stat.isdir
+          - base_dir_stat.stat.pw_name == 'kafka'
+        fail_msg: "Kafka base directory missing or wrong ownership"
+
+    - name: Check versions directory
+      ansible.builtin.stat:
+        path: "{{ kafka_base_dir }}/versions"
+      register: versions_dir_stat
+
+    - name: Assert versions directory exists
+      ansible.builtin.assert:
+        that:
+          - versions_dir_stat.stat.exists
+          - versions_dir_stat.stat.isdir
+        fail_msg: "Kafka versions directory not found"
+
+    - name: Check current symlink
+      ansible.builtin.stat:
+        path: "{{ kafka_current_dir }}"
+      register: current_link_stat
+
+    - name: Assert current symlink is valid
+      ansible.builtin.assert:
+        that:
+          - current_link_stat.stat.exists
+          - current_link_stat.stat.islnk
+        fail_msg: "Kafka current symlink not found or not a symlink"
+
+    # --- Binaries ---
+    - name: Check kafka-server-start.sh is executable
+      ansible.builtin.stat:
+        path: "{{ kafka_current_dir }}/bin/kafka-server-start.sh"
+      register: start_script_stat
+
+    - name: Assert kafka-server-start.sh exists and is executable
+      ansible.builtin.assert:
+        that:
+          - start_script_stat.stat.exists
+          - start_script_stat.stat.executable
+        fail_msg: "kafka-server-start.sh not found or not executable"
+
+    - name: Check kafka-topics.sh is executable
+      ansible.builtin.stat:
+        path: "{{ kafka_current_dir }}/bin/kafka-topics.sh"
+      register: topics_script_stat
+
+    - name: Assert kafka-topics.sh exists and is executable
+      ansible.builtin.assert:
+        that:
+          - topics_script_stat.stat.exists
+          - topics_script_stat.stat.executable
+        fail_msg: "kafka-topics.sh not found or not executable"
+
+    - name: Check kafka-storage.sh is executable
+      ansible.builtin.stat:
+        path: "{{ kafka_current_dir }}/bin/kafka-storage.sh"
+      register: storage_script_stat
+
+    - name: Assert kafka-storage.sh exists and is executable
+      ansible.builtin.assert:
+        that:
+          - storage_script_stat.stat.exists
+          - storage_script_stat.stat.executable
+        fail_msg: "kafka-storage.sh not found or not executable"
+
+    # --- JMX Exporter ---
+    - name: Check JMX exporter JAR exists
+      ansible.builtin.stat:
+        path: "{{ kafka_monitoring_dir }}/{{ jmx_exporter_jar }}"
+      register: jmx_jar_stat
+
+    - name: Assert JMX exporter JAR is present
+      ansible.builtin.assert:
+        that:
+          - jmx_jar_stat.stat.exists
+        fail_msg: "JMX exporter JAR not found"
+
+    - name: Check monitoring directory ownership
+      ansible.builtin.stat:
+        path: "{{ kafka_monitoring_dir }}"
+      register: mon_dir_stat
+
+    - name: Assert monitoring directory owned by kafka
+      ansible.builtin.assert:
+        that:
+          - mon_dir_stat.stat.pw_name == 'kafka'
+        fail_msg: "Monitoring directory not owned by kafka user"
+
+# ---- Controller assertions ----
+- name: "Verify: kafka_controller role"
+  hosts: kafka_controller
+  gather_facts: false
+  tasks:
+    # --- server.properties ---
+    - name: Read controller server.properties
+      ansible.builtin.slurp:
+        src: "{{ kafka_config_dir }}/server.properties"
+      register: ctrl_props_b64
+
+    - name: Decode controller properties
+      ansible.builtin.set_fact:
+        ctrl_props: "{{ ctrl_props_b64.content | b64decode }}"
+
+    - name: Assert controller server.properties contents
+      ansible.builtin.assert:
+        that:
+          - "'process.roles=controller' in ctrl_props"
+          - "'node.id=1' in ctrl_props"
+          - "'controller.quorum.voters=' in ctrl_props"
+          - "'CONTROLLER:PLAINTEXT' in ctrl_props"
+        fail_msg: "Controller server.properties missing expected configuration"
+
+    # --- Systemd unit ---
+    - name: Check kafka systemd unit exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/kafka.service
+      register: ctrl_unit_stat
+
+    - name: Assert kafka systemd unit exists
+      ansible.builtin.assert:
+        that:
+          - ctrl_unit_stat.stat.exists
+        fail_msg: "Kafka systemd unit not found"
+
+    # --- Systemd override ---
+    - name: Check systemd override exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/kafka.service.d/override.conf
+      register: ctrl_override_stat
+
+    - name: Assert systemd override exists
+      ansible.builtin.assert:
+        that:
+          - ctrl_override_stat.stat.exists
+        fail_msg: "Kafka systemd override not found"
+
+    - name: Read systemd override
+      ansible.builtin.slurp:
+        src: /etc/systemd/system/kafka.service.d/override.conf
+      register: ctrl_override_b64
+
+    - name: Assert override contains JAVA_HOME and heap
+      ansible.builtin.assert:
+        that:
+          - "'JAVA_HOME' in (ctrl_override_b64.content | b64decode)"
+          - "'KAFKA_HEAP_OPTS' in (ctrl_override_b64.content | b64decode)"
+          - "'jmx_prometheus_javaagent' in (ctrl_override_b64.content | b64decode)"
+        fail_msg: "Systemd override missing JAVA_HOME, heap, or JMX agent"
+
+    # --- meta.properties ---
+    - name: Check meta.properties exists
+      ansible.builtin.stat:
+        path: "{{ kafka_data_dir }}/metadata/meta.properties"
+      register: meta_props_stat
+
+    - name: Assert meta.properties exists (storage formatted)
+      ansible.builtin.assert:
+        that:
+          - meta_props_stat.stat.exists
+        fail_msg: "meta.properties not found — KRaft storage not formatted"
+
+    # --- Service status ---
+    - name: Check kafka service is active
+      ansible.builtin.command: systemctl is-active kafka
+      register: ctrl_service_active
+      changed_when: false
+
+    - name: Assert controller service is active
+      ansible.builtin.assert:
+        that:
+          - ctrl_service_active.stdout == 'active'
+        fail_msg: "Kafka controller service is not active"
+
+    - name: Check kafka service is enabled
+      ansible.builtin.command: systemctl is-enabled kafka
+      register: ctrl_service_enabled
+      changed_when: false
+
+    - name: Assert controller service is enabled
+      ansible.builtin.assert:
+        that:
+          - ctrl_service_enabled.stdout == 'enabled'
+        fail_msg: "Kafka controller service is not enabled"
+
+    # --- Ports ---
+    - name: Wait for controller port 9093
+      ansible.builtin.wait_for:
+        port: 9093
+        host: "0.0.0.0"
+        timeout: 60
+
+    - name: Wait for JMX exporter port 7071
+      ansible.builtin.wait_for:
+        port: 7071
+        host: "0.0.0.0"
+        timeout: 60
+
+# ---- Broker assertions ----
+- name: "Verify: kafka_broker role"
+  hosts: kafka_broker
+  gather_facts: false
+  tasks:
+    # --- server.properties ---
+    - name: Read broker server.properties
+      ansible.builtin.slurp:
+        src: "{{ kafka_config_dir }}/server.properties"
+      register: broker_props_b64
+
+    - name: Decode broker properties
+      ansible.builtin.set_fact:
+        broker_props: "{{ broker_props_b64.content | b64decode }}"
+
+    - name: Assert broker server.properties contents
+      ansible.builtin.assert:
+        that:
+          - "'process.roles=broker' in broker_props"
+          - "'node.id=100' in broker_props"
+          - "'log.dirs=' in broker_props"
+        fail_msg: "Broker server.properties missing expected configuration"
+
+    # --- Service status ---
+    - name: Check kafka broker service is active
+      ansible.builtin.command: systemctl is-active kafka
+      register: broker_service_active
+      changed_when: false
+
+    - name: Assert broker service is active
+      ansible.builtin.assert:
+        that:
+          - broker_service_active.stdout == 'active'
+        fail_msg: "Kafka broker service is not active"
+
+    # --- Ports ---
+    - name: Wait for broker PLAINTEXT port 9092
+      ansible.builtin.wait_for:
+        port: 9092
+        host: "0.0.0.0"
+        timeout: 60
+
+    - name: Wait for broker JMX exporter port 7071
+      ansible.builtin.wait_for:
+        port: 7071
+        host: "0.0.0.0"
+        timeout: 60
+
+# ---- Monitoring assertions ----
+- name: "Verify: Monitoring roles"
+  hosts: monitoring
+  gather_facts: false
+  tasks:
+    # --- Prometheus ---
+    - name: Check Prometheus binary exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/prometheus
+      register: prom_binary_stat
+
+    - name: Assert Prometheus binary exists
+      ansible.builtin.assert:
+        that:
+          - prom_binary_stat.stat.exists
+          - prom_binary_stat.stat.executable
+        fail_msg: "Prometheus binary not found or not executable"
+
+    - name: Check Prometheus config exists
+      ansible.builtin.stat:
+        path: /etc/prometheus/prometheus.yml
+      register: prom_config_stat
+
+    - name: Assert Prometheus config exists
+      ansible.builtin.assert:
+        that:
+          - prom_config_stat.stat.exists
+        fail_msg: "Prometheus configuration not found"
+
+    - name: Read Prometheus config
+      ansible.builtin.slurp:
+        src: /etc/prometheus/prometheus.yml
+      register: prom_config_b64
+
+    - name: Assert Prometheus config has kafka scrape targets
+      ansible.builtin.assert:
+        that:
+          - "'kafka' in (prom_config_b64.content | b64decode)"
+          - "'controller-01' in (prom_config_b64.content | b64decode)"
+          - "'broker-01' in (prom_config_b64.content | b64decode)"
+        fail_msg: "Prometheus config missing kafka scrape targets"
+
+    - name: Check alert rules file exists
+      ansible.builtin.stat:
+        path: /etc/prometheus/rules/kafka_alerts.yml
+      register: alert_rules_stat
+
+    - name: Assert alert rules file exists
+      ansible.builtin.assert:
+        that:
+          - alert_rules_stat.stat.exists
+        fail_msg: "Prometheus alert rules not found"
+
+    - name: Check Prometheus systemd unit exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/prometheus.service
+      register: prom_service_stat
+
+    - name: Assert Prometheus systemd unit exists
+      ansible.builtin.assert:
+        that:
+          - prom_service_stat.stat.exists
+        fail_msg: "Prometheus systemd unit not found"
+
+    # --- Grafana ---
+    - name: Check grafana.ini exists
+      ansible.builtin.stat:
+        path: /etc/grafana/grafana.ini
+      register: grafana_ini_stat
+
+    - name: Assert grafana.ini exists
+      ansible.builtin.assert:
+        that:
+          - grafana_ini_stat.stat.exists
+        fail_msg: "grafana.ini not found"
+
+    - name: Check datasource provisioning exists
+      ansible.builtin.stat:
+        path: /etc/grafana/provisioning/datasources/prometheus.yml
+      register: grafana_ds_stat
+
+    - name: Assert datasource provisioning exists
+      ansible.builtin.assert:
+        that:
+          - grafana_ds_stat.stat.exists
+        fail_msg: "Grafana datasource provisioning not found"
+
+    - name: Check dashboard provisioning config exists
+      ansible.builtin.stat:
+        path: /etc/grafana/provisioning/dashboards/kafka.yml
+      register: grafana_dash_prov_stat
+
+    - name: Assert dashboard provisioning config exists
+      ansible.builtin.assert:
+        that:
+          - grafana_dash_prov_stat.stat.exists
+        fail_msg: "Grafana dashboard provisioning config not found"
+
+    - name: Check dashboard JSON files exist
+      ansible.builtin.stat:
+        path: "/var/lib/grafana/dashboards/{{ item }}"
+      register: dashboard_stats
+      loop:
+        - kafka-overview.json
+        - kafka-broker.json
+        - kafka-controller.json
+        - jvm-metrics.json
+
+    - name: Assert all dashboard JSON files exist
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+        fail_msg: "Dashboard file {{ item.item }} not found"
+      loop: "{{ dashboard_stats.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    # --- Kafka UI ---
+    - name: Check Kafka UI systemd unit exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/kafka-ui.service
+      register: kafka_ui_service_stat
+
+    - name: Assert Kafka UI systemd unit exists
+      ansible.builtin.assert:
+        that:
+          - kafka_ui_service_stat.stat.exists
+        fail_msg: "Kafka UI systemd unit not found"
+
+    - name: Check Kafka UI config exists
+      ansible.builtin.stat:
+        path: /etc/kafka-ui/application.yml
+      register: kafka_ui_config_stat
+
+    - name: Assert Kafka UI config exists
+      ansible.builtin.assert:
+        that:
+          - kafka_ui_config_stat.stat.exists
+        fail_msg: "Kafka UI configuration not found"
+
+    - name: Check kafka-ui service is active
+      ansible.builtin.command: systemctl is-active kafka-ui
+      register: kafka_ui_active
+      changed_when: false
+
+    - name: Assert Kafka UI service is active
+      ansible.builtin.assert:
+        that:
+          - kafka_ui_active.stdout == 'active'
+        fail_msg: "Kafka UI service is not active"
+
+    - name: Wait for Kafka UI port 8080
+      ansible.builtin.wait_for:
+        port: "{{ kafka_ui_port }}"
+        host: "0.0.0.0"
+        timeout: 60

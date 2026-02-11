@@ -1,0 +1,4 @@
+---
+# Internal CLI paths — not user-overridable
+kafka_analysis_topics_cmd: "{{ kafka_current_dir }}/bin/kafka-topics.sh"
+kafka_analysis_configs_cmd: "{{ kafka_current_dir }}/bin/kafka-configs.sh"

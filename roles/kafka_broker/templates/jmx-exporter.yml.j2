@@ -1,0 +1,88 @@
+# JMX Exporter configuration for Kafka Broker — managed by Ansible
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # Broker Topic Metrics
+  - pattern: "kafka.server<type=BrokerTopicMetrics, name=(.+)><>Count"
+    name: "kafka_server_broker_topic_metrics_$1_total"
+    type: COUNTER
+
+  - pattern: "kafka.server<type=BrokerTopicMetrics, name=(.+), topic=(.+)><>Count"
+    name: "kafka_server_broker_topic_metrics_$1_total"
+    type: COUNTER
+    labels:
+      topic: "$2"
+
+  # Replica Manager
+  - pattern: "kafka.server<type=ReplicaManager, name=(.+)><>Value"
+    name: "kafka_server_replica_manager_$1"
+    type: GAUGE
+
+  # Under-Replicated Partitions
+  - pattern: "kafka.server<type=ReplicaManager, name=UnderReplicatedPartitions><>Value"
+    name: "kafka_server_under_replicated_partitions"
+    type: GAUGE
+
+  # Partition Count
+  - pattern: "kafka.server<type=ReplicaManager, name=PartitionCount><>Value"
+    name: "kafka_server_partition_count"
+    type: GAUGE
+
+  # ISR Shrink/Expand Rate
+  - pattern: "kafka.server<type=ReplicaManager, name=IsrShrinkRate><>Count"
+    name: "kafka_server_isr_shrink_total"
+    type: COUNTER
+
+  - pattern: "kafka.server<type=ReplicaManager, name=IsrExpandRate><>Count"
+    name: "kafka_server_isr_expand_total"
+    type: COUNTER
+
+  # Request Metrics
+  - pattern: "kafka.network<type=RequestMetrics, name=RequestsPerSec, request=(.+), version=(.+)><>Count"
+    name: "kafka_network_requests_per_sec_total"
+    type: COUNTER
+    labels:
+      request: "$1"
+
+  - pattern: "kafka.network<type=RequestMetrics, name=TotalTimeMs, request=(.+)><>(.+)"
+    name: "kafka_network_request_total_time_ms"
+    type: GAUGE
+    labels:
+      request: "$1"
+      aggregate: "$2"
+
+  # Controller Metrics (for active controller detection)
+  - pattern: "kafka.controller<type=KafkaController, name=(.+)><>Value"
+    name: "kafka_controller_$1"
+    type: GAUGE
+
+  # Log Metrics
+  - pattern: "kafka.log<type=LogFlushStats, name=LogFlushRateAndTimeMs><>Count"
+    name: "kafka_log_flush_total"
+    type: COUNTER
+
+  # JVM Metrics
+  - pattern: "java.lang<type=Memory><HeapMemoryUsage>(.+)"
+    name: "jvm_heap_memory_$1"
+    type: GAUGE
+
+  - pattern: "java.lang<type=GarbageCollector, name=(.+)><>CollectionCount"
+    name: "jvm_gc_collection_count"
+    type: COUNTER
+    labels:
+      gc: "$1"
+
+  - pattern: "java.lang<type=GarbageCollector, name=(.+)><>CollectionTime"
+    name: "jvm_gc_collection_time_ms"
+    type: COUNTER
+    labels:
+      gc: "$1"
+
+  - pattern: "java.lang<type=Threading><>ThreadCount"
+    name: "jvm_thread_count"
+    type: GAUGE
+
+  - pattern: "java.lang<type=OperatingSystem><>OpenFileDescriptorCount"
+    name: "jvm_open_file_descriptors"
+    type: GAUGE

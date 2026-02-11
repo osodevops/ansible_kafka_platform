@@ -1,0 +1,31 @@
+---
+# =============================================================================
+# Molecule Default — Controller Group Configuration
+# =============================================================================
+
+kafka_process_roles: "controller"
+
+# --- Controller Listener ---
+kafka_controller_listener_name: "CONTROLLER"
+kafka_controller_listener_security_protocol: "PLAINTEXT"
+kafka_controller_listener: "CONTROLLER://{{ inventory_hostname }}:{{ kafka_controller_port }}"
+
+# --- Metadata Storage ---
+kafka_metadata_log_dir: "{{ kafka_data_dir }}/metadata"
+
+# --- Controller-specific server.properties ---
+kafka_controller_properties:
+  process.roles: "controller"
+  controller.listener.names: "CONTROLLER"
+  listeners: "CONTROLLER://:{{ kafka_controller_port }}"
+  listener.security.protocol.map: "CONTROLLER:PLAINTEXT"
+  controller.quorum.voters: "{{ kafka_controller_quorum_voters }}"
+  controller.quorum.bootstrap.servers: "{{ kafka_controller_quorum_bootstrap_servers }}"
+  metadata.log.dir: "{{ kafka_metadata_log_dir }}"
+  # Authorizer
+  authorizer.class.name: "{{ kafka_authorizer_class }}"
+  allow.everyone.if.no.acl.found: "{{ kafka_allow_everyone_if_no_acl_found }}"
+  super.users: "{{ kafka_super_users | join(';') }}"
+
+# --- Storage: empty for Docker ---
+kafka_controller_storage_mounts: []

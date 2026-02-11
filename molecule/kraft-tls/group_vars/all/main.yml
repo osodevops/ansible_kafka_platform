@@ -1,0 +1,66 @@
+---
+# =============================================================================
+# Molecule kraft-tls Scenario — Global Overrides
+# =============================================================================
+# Docker-friendly overrides: 3-node quorum, no block devices, 512m heap.
+
+# --- Kafka Version ---
+kafka_version: "4.1.1"
+kafka_scala_version: "2.13"
+kafka_package: "kafka_{{ kafka_scala_version }}-{{ kafka_version }}"
+kafka_download_url: "https://downloads.apache.org/kafka/{{ kafka_version }}/{{ kafka_package }}.tgz"
+kafka_download_checksum: ""
+
+# --- Java ---
+java_package: "openjdk-21-jdk-headless"
+java_home: "/usr/lib/jvm/java-21-openjdk-{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+
+# --- Filesystem Paths ---
+kafka_base_dir: "/opt/kafka"
+kafka_install_dir: "{{ kafka_base_dir }}/versions/{{ kafka_package }}"
+kafka_current_dir: "{{ kafka_base_dir }}/current"
+kafka_config_dir: "{{ kafka_base_dir }}/config"
+kafka_ssl_dir: "{{ kafka_base_dir }}/ssl"
+kafka_monitoring_dir: "{{ kafka_base_dir }}/monitoring"
+kafka_data_dir: "/data/kafka"
+kafka_log_dir: "{{ kafka_data_dir }}/logs"
+
+# --- System User ---
+kafka_user: "kafka"
+kafka_group: "kafka"
+
+# --- KRaft Quorum (3-node) ---
+kafka_controller_quorum_voters: "1@controller-01:9093,2@controller-02:9093,3@controller-03:9093"
+kafka_controller_quorum_bootstrap_servers: "controller-01:9093,controller-02:9093,controller-03:9093"
+
+# --- Network ---
+kafka_controller_port: 9093
+kafka_broker_ssl_port: 9094
+kafka_broker_sasl_ssl_port: 9095
+kafka_jmx_exporter_port: 7071
+
+# --- Storage: skip block devices in Docker ---
+molecule_skip_storage: true
+kafka_controller_storage_mounts: []
+kafka_broker_storage_mounts: []
+monitoring_reserve_devices: []
+
+# --- JMX Exporter ---
+jmx_exporter_version: "1.0.1"
+jmx_exporter_jar: "jmx_prometheus_javaagent-{{ jmx_exporter_version }}.jar"
+jmx_exporter_download_url: "https://repo1.maven.org/maven2/io/prometheus/jmx/jmx_prometheus_javaagent/{{ jmx_exporter_version }}/{{ jmx_exporter_jar }}"
+jmx_exporter_port: "{{ kafka_jmx_exporter_port }}"
+
+# --- Heap: moderate for Docker with 7 containers ---
+kafka_heap_size: "512m"
+kafka_heap_opts: "-Xms512m -Xmx512m"
+
+# --- GC: relaxed for Docker ---
+kafka_gc_max_pause_millis: 200
+kafka_gc_initiating_heap_occupancy_percent: 45
+kafka_gc_heap_region_size: "4M"
+
+# --- Health checks: Docker-friendly ---
+kafka_health_check_address: "localhost"
+kafka_controller_port_timeout: 180
+kafka_broker_port_timeout: 180

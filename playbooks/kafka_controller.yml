@@ -1,0 +1,10 @@
+---
+- name: "Deploy KRaft controllers"
+  hosts: kafka_controller
+  gather_facts: true
+  roles:
+    - common
+    - kafka_install
+    - ssl
+    - kafka_controller
+  tags: [kafka_controller]

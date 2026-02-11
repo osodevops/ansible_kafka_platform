@@ -1,0 +1,10 @@
+---
+# =============================================================================
+# KRaft Controller Group Overrides
+# =============================================================================
+
+# Controller-specific heap (controllers are less memory-intensive)
+kafka_heap_opts: "-Xms512m -Xmx512m"
+
+# Controller process role
+kafka_process_roles: "controller"

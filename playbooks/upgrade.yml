@@ -1,0 +1,160 @@
+---
+# =============================================================================
+# upgrade.yml — Kafka Version Upgrade
+# =============================================================================
+# Usage: ansible-playbook playbooks/upgrade.yml -e kafka_new_version=4.1.0
+#
+# Strategy:
+#   1. Download and install new version (parallel)
+#   2. Rolling upgrade: controllers first (serial:1), then brokers (serial:1)
+#   3. Update symlink, restart, verify health between each node
+# =============================================================================
+
+- name: "Upgrade: Validate new version variable"
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Verify kafka_new_version is provided
+      ansible.builtin.assert:
+        that:
+          - kafka_new_version is defined
+          - kafka_new_version | length > 0
+        fail_msg: "You must specify -e kafka_new_version=X.Y.Z"
+
+- name: "Upgrade: Download new Kafka version to all nodes"
+  hosts: kafka
+  gather_facts: false
+  vars:
+    kafka_new_package: "kafka_{{ kafka_scala_version }}-{{ kafka_new_version }}"
+    kafka_new_install_dir: "{{ kafka_base_dir }}/versions/{{ kafka_new_package }}"
+    kafka_new_download_url: "https://downloads.apache.org/kafka/{{ kafka_new_version }}/{{ kafka_new_package }}.tgz"
+  tasks:
+    - name: Download new Kafka tarball
+      ansible.builtin.get_url:
+        url: "{{ kafka_new_download_url }}"
+        dest: "/tmp/{{ kafka_new_package }}.tgz"
+        mode: "0644"
+
+    - name: Extract new Kafka version
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ kafka_new_package }}.tgz"
+        dest: "{{ kafka_base_dir }}/versions/"
+        remote_src: true
+        owner: "{{ kafka_user }}"
+        group: "{{ kafka_group }}"
+        creates: "{{ kafka_new_install_dir }}"
+
+    - name: Clean up tarball
+      ansible.builtin.file:
+        path: "/tmp/{{ kafka_new_package }}.tgz"
+        state: absent
+
+- name: "Upgrade: Rolling upgrade controllers"
+  hosts: kafka_controller
+  serial: 1
+  gather_facts: false
+  vars:
+    kafka_new_package: "kafka_{{ kafka_scala_version }}-{{ kafka_new_version }}"
+    kafka_new_install_dir: "{{ kafka_base_dir }}/versions/{{ kafka_new_package }}"
+  tasks:
+    - name: Stop Kafka controller
+      ansible.builtin.systemd:
+        name: kafka
+        state: stopped
+
+    - name: Update symlink to new version
+      ansible.builtin.file:
+        src: "{{ kafka_new_install_dir }}"
+        dest: "{{ kafka_current_dir }}"
+        state: link
+        owner: "{{ kafka_user }}"
+        group: "{{ kafka_group }}"
+        force: true
+
+    - name: Start Kafka controller
+      ansible.builtin.systemd:
+        name: kafka
+        state: started
+
+    - name: Wait for controller port
+      ansible.builtin.wait_for:
+        port: "{{ kafka_controller_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 120
+
+    - name: Pause for quorum stabilization
+      ansible.builtin.pause:
+        seconds: 15
+
+    - name: Verify quorum health
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-metadata-quorum.sh
+        --bootstrap-controller {{ kafka_controller_quorum_bootstrap_servers }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        describe --replication
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: quorum_check
+      retries: 10
+      delay: 5
+      until: quorum_check.rc == 0
+      changed_when: false
+
+    - name: Display upgrade status
+      ansible.builtin.debug:
+        msg: "Controller {{ inventory_hostname }} upgraded to {{ kafka_new_version }}."
+
+- name: "Upgrade: Rolling upgrade brokers"
+  hosts: kafka_broker
+  serial: 1
+  gather_facts: false
+  vars:
+    kafka_new_package: "kafka_{{ kafka_scala_version }}-{{ kafka_new_version }}"
+    kafka_new_install_dir: "{{ kafka_base_dir }}/versions/{{ kafka_new_package }}"
+  tasks:
+    - name: Stop Kafka broker
+      ansible.builtin.systemd:
+        name: kafka
+        state: stopped
+
+    - name: Update symlink to new version
+      ansible.builtin.file:
+        src: "{{ kafka_new_install_dir }}"
+        dest: "{{ kafka_current_dir }}"
+        state: link
+        owner: "{{ kafka_user }}"
+        group: "{{ kafka_group }}"
+        force: true
+
+    - name: Start Kafka broker
+      ansible.builtin.systemd:
+        name: kafka
+        state: started
+
+    - name: Wait for broker SSL port
+      ansible.builtin.wait_for:
+        port: "{{ kafka_broker_ssl_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 120
+
+    - name: Pause for ISR catch-up
+      ansible.builtin.pause:
+        seconds: 30
+
+    - name: Wait for zero URPs
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-topics.sh
+        --bootstrap-server {{ ansible_host }}:{{ kafka_broker_ssl_port }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        --describe --under-replicated-partitions
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: urp_check
+      retries: 15
+      delay: 10
+      until: urp_check.stdout == ""
+      changed_when: false
+
+    - name: Display upgrade status
+      ansible.builtin.debug:
+        msg: "Broker {{ inventory_hostname }} upgraded to {{ kafka_new_version }}. Zero URPs."

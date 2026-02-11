@@ -1,0 +1,103 @@
+---
+# =============================================================================
+# rolling_restart.yml — Rolling Restart of Kafka Cluster
+# =============================================================================
+# Order: Controllers first (serial:1), then Brokers (serial:1)
+# Health checks between each restart
+# =============================================================================
+
+- name: "Rolling restart: KRaft controllers"
+  hosts: kafka_controller
+  serial: 1
+  gather_facts: false
+  tasks:
+    - name: Restart Kafka controller service
+      ansible.builtin.systemd:
+        name: kafka
+        state: restarted
+
+    - name: Wait for controller port to be listening
+      ansible.builtin.wait_for:
+        port: "{{ kafka_controller_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 120
+
+    - name: Wait for JMX exporter to be ready
+      ansible.builtin.wait_for:
+        port: "{{ kafka_jmx_exporter_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 60
+
+    - name: Pause for quorum stabilization
+      ansible.builtin.pause:
+        seconds: 15
+
+    - name: Verify quorum health after restart
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-metadata-quorum.sh
+        --bootstrap-controller {{ kafka_controller_quorum_bootstrap_servers }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        describe --replication
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: quorum_status
+      retries: 10
+      delay: 5
+      until: quorum_status.rc == 0
+      changed_when: false
+
+    - name: Display quorum status
+      ansible.builtin.debug:
+        msg: "Controller {{ inventory_hostname }} restarted. Quorum healthy."
+  tags: [rolling_restart, controllers]
+
+- name: "Rolling restart: Kafka brokers"
+  hosts: kafka_broker
+  serial: 1
+  gather_facts: false
+  tasks:
+    - name: Restart Kafka broker service
+      ansible.builtin.systemd:
+        name: kafka
+        state: restarted
+
+    - name: Wait for broker SSL port to be listening
+      ansible.builtin.wait_for:
+        port: "{{ kafka_broker_ssl_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 120
+
+    - name: Wait for SASL_SSL port
+      ansible.builtin.wait_for:
+        port: "{{ kafka_broker_sasl_ssl_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 120
+
+    - name: Wait for JMX exporter to be ready
+      ansible.builtin.wait_for:
+        port: "{{ kafka_jmx_exporter_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 60
+
+    - name: Pause for ISR catch-up
+      ansible.builtin.pause:
+        seconds: 30
+
+    - name: Wait for zero under-replicated partitions
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-topics.sh
+        --bootstrap-server {{ ansible_host }}:{{ kafka_broker_ssl_port }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        --describe --under-replicated-partitions
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: urp_check
+      retries: 15
+      delay: 10
+      until: urp_check.stdout == ""
+      changed_when: false
+
+    - name: Display restart status
+      ansible.builtin.debug:
+        msg: "Broker {{ inventory_hostname }} restarted. Zero URPs confirmed."
+  tags: [rolling_restart, brokers]

@@ -1,0 +1,8 @@
+# Kafka Broker Configuration — managed by Ansible
+# Node: {{ inventory_hostname }} (node.id={{ kafka_node_id }})
+
+node.id={{ kafka_node_id }}
+
+{% for key, value in kafka_broker_properties.items() %}
+{{ key }}={{ value }}
+{% endfor %}

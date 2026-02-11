@@ -1,0 +1,45 @@
+---
+- name: Template broker server.properties
+  ansible.builtin.template:
+    src: server.properties.j2
+    dest: "{{ kafka_broker_config_file }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0640"
+  notify: restart kafka broker
+
+- name: Template broker client.properties
+  ansible.builtin.template:
+    src: client.properties.j2
+    dest: "{{ kafka_broker_client_config }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0640"
+
+- name: Template log4j2.properties
+  ansible.builtin.template:
+    src: log4j2.properties.j2
+    dest: "{{ kafka_broker_log4j_config }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0644"
+  notify: restart kafka broker
+
+- name: Template JMX exporter config
+  ansible.builtin.template:
+    src: jmx-exporter.yml.j2
+    dest: "{{ kafka_broker_jmx_config }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0644"
+  notify: restart kafka broker
+
+- name: Template JAAS config for SASL
+  ansible.builtin.template:
+    src: kafka_server_jaas.conf.j2
+    dest: "{{ kafka_broker_jaas_config }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0640"
+  notify: restart kafka broker
+  when: kafka_sasl_enabled | default(true)

@@ -1,0 +1,12 @@
+---
+# Kafbat UI role defaults
+kafka_ui_version: "1.4.2"
+kafka_ui_port: 8080
+kafka_ui_user: "kafkaui"
+kafka_ui_group: "kafkaui"
+kafka_ui_jar: "api-v{{ kafka_ui_version }}.jar"
+kafka_ui_download_url: "https://github.com/kafbat/kafka-ui/releases/download/v{{ kafka_ui_version }}/{{ kafka_ui_jar }}"
+kafka_ui_install_dir: "/opt/kafka-ui"
+kafka_ui_config_dir: "/etc/kafka-ui"
+kafka_ui_cluster_name: "kafka-cluster"
+kafka_ui_bootstrap_servers: "localhost:9092"

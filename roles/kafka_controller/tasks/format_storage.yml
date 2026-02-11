@@ -1,0 +1,39 @@
+---
+- name: Check if metadata directory is already formatted
+  ansible.builtin.stat:
+    path: "{{ kafka_metadata_log_dir }}/meta.properties"
+  register: metadata_formatted
+
+- name: Generate cluster UUID
+  ansible.builtin.command: "{{ kafka_current_dir }}/bin/kafka-storage.sh random-uuid"
+  register: cluster_uuid_result
+  run_once: true
+  when: not metadata_formatted.stat.exists
+  changed_when: false
+
+- name: Set cluster UUID fact
+  ansible.builtin.set_fact:
+    kafka_cluster_uuid: "{{ cluster_uuid_result.stdout }}"
+  run_once: true
+  when: not metadata_formatted.stat.exists
+
+- name: Share cluster UUID with all hosts
+  ansible.builtin.set_fact:
+    kafka_cluster_uuid: "{{ hostvars[groups['kafka_controller'][0]]['kafka_cluster_uuid'] }}"
+  when:
+    - not metadata_formatted.stat.exists
+    - kafka_cluster_uuid is not defined
+
+- name: Format KRaft storage
+  ansible.builtin.command: >
+    {{ kafka_current_dir }}/bin/kafka-storage.sh format
+    --config {{ kafka_controller_config_file }}
+    --cluster-id {{ kafka_cluster_uuid }}
+  become: true
+  become_user: "{{ kafka_user }}"
+  when: not metadata_formatted.stat.exists
+
+- name: Start Kafka controller service
+  ansible.builtin.systemd:
+    name: kafka
+    state: started

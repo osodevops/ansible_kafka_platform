@@ -1,0 +1,22 @@
+---
+- name: Ensure chrony is installed
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+
+- name: Enable and start chrony
+  ansible.builtin.systemd:
+    name: chrony
+    enabled: true
+    state: started
+  failed_when: false
+
+- name: Verify NTP synchronization
+  ansible.builtin.command: chronyc tracking
+  register: chrony_status
+  changed_when: false
+  failed_when: false
+
+- name: Display NTP status
+  ansible.builtin.debug:
+    msg: "NTP synchronized: {{ 'Normal' in (chrony_status.stdout | default('')) }}"

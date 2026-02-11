@@ -1,0 +1,4 @@
+---
+# kafka_topics role defaults
+kafka_topics_bootstrap_server: "{{ groups['kafka_broker'][0] }}:{{ kafka_broker_client_port | default(kafka_broker_ssl_port) }}"
+kafka_topics_client_config: "{{ kafka_config_dir }}/client.properties"

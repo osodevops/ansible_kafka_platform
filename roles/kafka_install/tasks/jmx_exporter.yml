@@ -1,0 +1,14 @@
+---
+- name: Check if JMX exporter JAR exists
+  ansible.builtin.stat:
+    path: "{{ kafka_monitoring_dir }}/{{ jmx_exporter_jar }}"
+  register: jmx_jar_check
+
+- name: Download JMX Prometheus exporter agent
+  ansible.builtin.get_url:
+    url: "{{ jmx_exporter_download_url }}"
+    dest: "{{ kafka_monitoring_dir }}/{{ jmx_exporter_jar }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0644"
+  when: not jmx_jar_check.stat.exists

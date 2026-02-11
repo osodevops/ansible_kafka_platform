@@ -1,0 +1,66 @@
+---
+# Phase 1: OS prerequisites on Kafka nodes
+- name: "Phase 1: OS prerequisites on Kafka nodes"
+  hosts: kafka
+  gather_facts: true
+  roles:
+    - common
+  tags: [common]
+
+# Phase 2: Install Kafka on all Kafka nodes
+- name: "Phase 2: Install Kafka on all Kafka nodes"
+  hosts: kafka
+  gather_facts: false
+  roles:
+    - kafka_install
+  tags: [kafka_install]
+
+# Phase 3: Generate and distribute SSL certificates
+- name: "Phase 3: Generate and distribute SSL certificates"
+  hosts: kafka
+  gather_facts: false
+  tasks:
+    - name: Include SSL role
+      ansible.builtin.include_role:
+        name: ssl
+      when: kafka_ssl_enabled | default(true)
+  tags: [ssl]
+
+# Phase 4: Deploy KRaft controllers
+- name: "Phase 4: Deploy KRaft controllers"
+  hosts: kafka_controller
+  gather_facts: false
+  roles:
+    - kafka_controller
+  tags: [kafka_controller]
+
+# Phase 5: Deploy Kafka brokers
+- name: "Phase 5: Deploy Kafka brokers"
+  hosts: kafka_broker
+  gather_facts: false
+  roles:
+    - kafka_broker
+  tags: [kafka_broker]
+
+# Phase 6: Deploy monitoring
+- name: "Phase 6: Deploy Prometheus"
+  hosts: monitoring
+  gather_facts: true
+  roles:
+    - prometheus
+  tags: [monitoring, prometheus]
+
+- name: "Phase 6: Deploy Grafana"
+  hosts: monitoring
+  gather_facts: true
+  roles:
+    - grafana
+  tags: [monitoring, grafana]
+
+# Phase 7: Deploy Kafka UI
+- name: "Phase 7: Deploy Kafka UI"
+  hosts: monitoring
+  gather_facts: false
+  roles:
+    - kafka_ui
+  tags: [kafka_ui]

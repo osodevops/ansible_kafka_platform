@@ -1,0 +1,20 @@
+---
+profile: production
+
+exclude_paths:
+  - .github/
+  - molecule/
+  - examples/
+
+skip_list:
+  - yaml[line-length]
+  - name[template]
+  - var-naming[no-role-prefix]
+  - key-order[task]
+
+warn_list:
+  - command-instead-of-module
+  - no-changed-when
+
+enable_list:
+  - no-same-owner

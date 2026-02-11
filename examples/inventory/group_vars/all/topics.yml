@@ -1,0 +1,73 @@
+---
+# =============================================================================
+# Kafka Topic Definitions
+# =============================================================================
+# Define all topics to be created by the kafka_topics role.
+# Each topic requires: name, partitions, replication_factor
+# Optional: config (map of topic-level config overrides)
+# =============================================================================
+
+kafka_topics:
+  # --- Ingest Topics ---
+  - name: ingest.orders.v1
+    partitions: 12
+    replication_factor: 3
+    config:
+      retention.ms: "604800000"      # 7 days
+      min.insync.replicas: "2"
+
+  - name: ingest.events.v1
+    partitions: 6
+    replication_factor: 3
+    config:
+      retention.ms: "604800000"
+
+  - name: ingest.clickstream.v1
+    partitions: 24
+    replication_factor: 3
+    config:
+      retention.ms: "259200000"      # 3 days
+      segment.bytes: "536870912"     # 512 MB
+
+  # --- Processing Topics ---
+  - name: processing.enriched-orders.v1
+    partitions: 12
+    replication_factor: 3
+    config:
+      retention.ms: "604800000"
+      min.insync.replicas: "2"
+
+  - name: processing.aggregations.v1
+    partitions: 6
+    replication_factor: 3
+    config:
+      retention.ms: "604800000"
+
+  # --- Output Topics ---
+  - name: output.notifications.v1
+    partitions: 6
+    replication_factor: 3
+    config:
+      retention.ms: "259200000"
+
+  - name: output.reports.v1
+    partitions: 3
+    replication_factor: 3
+    config:
+      retention.ms: "2592000000"     # 30 days
+
+  # --- Metrics Topics ---
+  - name: metrics.application.v1
+    partitions: 6
+    replication_factor: 3
+    config:
+      retention.ms: "86400000"       # 1 day
+      cleanup.policy: "delete"
+
+  # --- Compact Topics ---
+  - name: state.user-profiles.v1
+    partitions: 12
+    replication_factor: 3
+    config:
+      cleanup.policy: "compact"
+      min.compaction.lag.ms: "3600000"

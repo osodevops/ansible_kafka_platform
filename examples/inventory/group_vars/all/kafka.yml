@@ -1,0 +1,32 @@
+---
+# =============================================================================
+# Kafka Configuration
+# =============================================================================
+
+# --- Replication ---
+kafka_default_replication_factor: 3
+kafka_min_insync_replicas: 2
+kafka_offsets_topic_replication_factor: 3
+kafka_transaction_state_log_replication_factor: 3
+kafka_transaction_state_log_min_isr: 2
+
+# --- Partitions ---
+kafka_num_partitions: 6
+
+# --- Ports ---
+kafka_controller_port: 9093
+kafka_broker_ssl_port: 9092
+kafka_broker_sasl_ssl_port: 9094
+kafka_jmx_exporter_port: 7071
+
+# --- Log Retention ---
+kafka_log_retention_hours: 168       # 7 days
+kafka_log_retention_bytes: -1        # Unlimited (time-based only)
+kafka_log_segment_bytes: 1073741824  # 1 GB
+
+# --- Network ---
+kafka_num_network_threads: 3
+kafka_num_io_threads: 8
+kafka_socket_send_buffer_bytes: 102400
+kafka_socket_receive_buffer_bytes: 102400
+kafka_socket_request_max_bytes: 104857600

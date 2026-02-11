@@ -1,0 +1,43 @@
+# Log4j2 configuration for Kafka Controller — managed by Ansible
+name=KafkaControllerLog4j
+status=WARN
+
+appenders=console, rollingFile
+
+appender.console.type=Console
+appender.console.name=STDOUT
+appender.console.layout.type=PatternLayout
+appender.console.layout.pattern=[%d] %p %m (%c)%n
+
+appender.rollingFile.type=RollingFile
+appender.rollingFile.name=RollingFile
+appender.rollingFile.fileName={{ kafka_log_dir }}/server.log
+appender.rollingFile.filePattern={{ kafka_log_dir }}/server.log.%i
+appender.rollingFile.layout.type=PatternLayout
+appender.rollingFile.layout.pattern=[%d] %p %m (%c)%n
+appender.rollingFile.policies.type=Policies
+appender.rollingFile.policies.size.type=SizeBasedTriggeringPolicy
+appender.rollingFile.policies.size.size=256MB
+appender.rollingFile.strategy.type=DefaultRolloverStrategy
+appender.rollingFile.strategy.max=20
+
+rootLogger.level=INFO
+rootLogger.appenderRefs=console, rollingFile
+rootLogger.appenderRef.console.ref=STDOUT
+rootLogger.appenderRef.rollingFile.ref=RollingFile
+
+# Reduce noise from verbose loggers
+logger.kafka.name=kafka
+logger.kafka.level=INFO
+
+logger.controller.name=org.apache.kafka.controller
+logger.controller.level=INFO
+
+logger.metadata.name=org.apache.kafka.metadata
+logger.metadata.level=INFO
+
+logger.state.name=state.change.logger
+logger.state.level=INFO
+logger.state.appenderRefs=rollingFile
+logger.state.appenderRef.rollingFile.ref=RollingFile
+logger.state.additivity=false

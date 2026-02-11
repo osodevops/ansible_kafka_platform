@@ -1,0 +1,155 @@
+---
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  ANSIBLE_FORCE_COLOR: "1"
+  PY_COLORS: "1"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install yamllint ansible-core ansible-lint
+
+      - name: Install Galaxy dependencies
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: Run yamllint
+        run: yamllint .
+
+      - name: Run ansible-lint
+        run: ansible-lint
+
+  sanity:
+    name: Sanity (collection build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Ansible
+        run: pip install ansible-core
+
+      - name: Build collection
+        run: ansible-galaxy collection build
+
+      - name: Verify tarball exists
+        run: test -f osodevops-kafka_platform-*.tar.gz
+
+      - name: Upload collection artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: collection-tarball
+          path: osodevops-kafka_platform-*.tar.gz
+          retention-days: 5
+
+  sensitive-data-scan:
+    name: Sensitive data scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Scan for private IPs
+        run: |
+          if grep -rn --include='*.yml' --include='*.yaml' --include='*.j2' \
+            -E '192\.168\.|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2[0-9]|3[01])\.' \
+            --exclude-dir=.git --exclude-dir=venv --exclude-dir=examples . ; then
+            echo "::error::Found private IP addresses in source files"
+            exit 1
+          fi
+
+      - name: Scan for client-specific references
+        run: |
+          if grep -rni --include='*.yml' --include='*.yaml' --include='*.j2' --include='*.json' \
+            -E 'market.research|feedmon|ssgen|selection-service|vm-kaf' \
+            --exclude-dir=.git --exclude-dir=venv . ; then
+            echo "::error::Found client-specific references in source files"
+            exit 1
+          fi
+
+  molecule-default:
+    name: Molecule (default)
+    runs-on: ubuntu-latest
+    needs: [lint, sanity]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install \
+            ansible-core \
+            molecule \
+            molecule-plugins[docker] \
+            docker \
+            jmespath
+
+      - name: Install Galaxy dependencies
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: Run Molecule default scenario
+        run: molecule test -s default
+        env:
+          MOLECULE_DISTRO: ubuntu2404
+
+  molecule-kraft-tls:
+    name: Molecule (kraft-tls)
+    runs-on: ubuntu-latest
+    needs: [lint, sanity]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install \
+            ansible-core \
+            molecule \
+            molecule-plugins[docker] \
+            docker \
+            jmespath
+
+      - name: Install Galaxy dependencies
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: Run Molecule kraft-tls scenario
+        run: molecule test -s kraft-tls
+        env:
+          MOLECULE_DISTRO: ubuntu2404

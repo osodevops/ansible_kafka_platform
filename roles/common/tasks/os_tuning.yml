@@ -1,0 +1,36 @@
+---
+- name: Deploy Kafka sysctl configuration
+  ansible.builtin.template:
+    src: sysctl-kafka.conf.j2
+    dest: /etc/sysctl.d/99-kafka.conf
+    mode: "0644"
+  notify: reload sysctl
+
+- name: Deploy Kafka security limits
+  ansible.builtin.template:
+    src: limits-kafka.conf.j2
+    dest: /etc/security/limits.d/99-kafka.conf
+    mode: "0644"
+
+- name: Set I/O scheduler to none (noop) for data devices
+  ansible.builtin.shell: |
+    for dev in sdb sdc sdd sde sdf sdg; do
+      if [ -e /sys/block/${dev}/queue/scheduler ]; then
+        echo none > /sys/block/${dev}/queue/scheduler
+      fi
+    done
+  changed_when: false
+
+- name: Check if udev rules directory exists
+  ansible.builtin.stat:
+    path: /etc/udev/rules.d
+  register: udev_rules_dir
+
+- name: Create udev rule for I/O scheduler persistence
+  ansible.builtin.copy:
+    content: |
+      # Set I/O scheduler to none for Kafka data drives
+      ACTION=="add|change", KERNEL=="sd[b-g]", ATTR{queue/scheduler}="none"
+    dest: /etc/udev/rules.d/60-kafka-scheduler.rules
+    mode: "0644"
+  when: udev_rules_dir.stat.exists

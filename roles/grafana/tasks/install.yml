@@ -1,0 +1,74 @@
+---
+- name: Format data disk
+  community.general.filesystem:
+    dev: "{{ monitoring_data_device }}"
+    fstype: xfs
+    force: false
+  when: not (molecule_skip_storage | default(false))
+
+- name: Create data directory
+  ansible.builtin.file:
+    path: "{{ grafana_data_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Mount data disk
+  ansible.posix.mount:
+    path: "{{ grafana_data_dir }}"
+    src: "{{ monitoring_data_device }}"
+    fstype: xfs
+    opts: "{{ monitoring_data_mount_opts }}"
+    state: mounted
+  when: not (molecule_skip_storage | default(false))
+
+- name: Format and mount reserve disks
+  block:
+    - name: Format reserve disks
+      community.general.filesystem:
+        dev: "{{ item.device }}"
+        fstype: xfs
+        force: false
+      loop: "{{ monitoring_reserve_devices }}"
+
+    - name: Create reserve mount points
+      ansible.builtin.file:
+        path: "{{ item.mount }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ monitoring_reserve_devices }}"
+
+    - name: Mount reserve disks
+      ansible.posix.mount:
+        path: "{{ item.mount }}"
+        src: "{{ item.device }}"
+        fstype: xfs
+        opts: "{{ monitoring_data_mount_opts }}"
+        state: mounted
+      loop: "{{ monitoring_reserve_devices }}"
+  when: not (molecule_skip_storage | default(false))
+
+- name: Install prerequisite packages
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - software-properties-common
+      - gnupg
+    state: present
+    update_cache: true
+
+- name: Add Grafana GPG key
+  ansible.builtin.apt_key:
+    url: "{{ grafana_apt_key_url }}"
+    state: present
+
+- name: Add Grafana APT repository
+  ansible.builtin.apt_repository:
+    repo: "{{ grafana_apt_repo }}"
+    state: present
+    filename: grafana
+
+- name: Install Grafana
+  ansible.builtin.apt:
+    name: grafana
+    state: present
+    update_cache: true

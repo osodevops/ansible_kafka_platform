@@ -1,0 +1,28 @@
+---
+galaxy_info:
+  author: OSO DevOps
+  description: Deploy and configure KRaft controller nodes
+  license: Apache-2.0
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+  galaxy_tags:
+    - kafka
+    - kraft
+    - controller
+dependencies:
+  - common
+  - kafka_install
+  - ssl

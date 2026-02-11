@@ -1,0 +1,8 @@
+---
+- name: Include Kafka UI install tasks
+  ansible.builtin.include_tasks: install.yml
+  tags: [kafka_ui, install]
+
+- name: Include Kafka UI configure tasks
+  ansible.builtin.include_tasks: configure.yml
+  tags: [kafka_ui, configure]

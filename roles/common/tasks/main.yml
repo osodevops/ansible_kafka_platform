@@ -1,0 +1,24 @@
+---
+- name: Include packages tasks
+  ansible.builtin.include_tasks: packages.yml
+  tags: [common, packages]
+
+- name: Include Java tasks
+  ansible.builtin.include_tasks: java.yml
+  tags: [common, java]
+
+- name: Include user tasks
+  ansible.builtin.include_tasks: user.yml
+  tags: [common, user]
+
+- name: Include storage tasks
+  ansible.builtin.include_tasks: storage.yml
+  tags: [common, storage]
+
+- name: Include OS tuning tasks
+  ansible.builtin.include_tasks: os_tuning.yml
+  tags: [common, tuning]
+
+- name: Include chrony tasks
+  ansible.builtin.include_tasks: chrony.yml
+  tags: [common, chrony]

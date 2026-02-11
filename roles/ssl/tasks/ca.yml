@@ -1,0 +1,86 @@
+---
+- name: Create CA directory
+  ansible.builtin.file:
+    path: "{{ ssl_ca_dir }}"
+    state: directory
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0700"
+
+- name: Check if CA key exists
+  ansible.builtin.stat:
+    path: "{{ ssl_ca_key }}"
+  register: ca_key_stat
+
+- name: Generate CA private key
+  ansible.builtin.command: >
+    openssl genrsa -aes256
+    -passout pass:{{ ssl_ca_password }}
+    -out {{ ssl_ca_key }} 4096
+  when: not ca_key_stat.stat.exists
+  run_once: true
+  no_log: true
+
+- name: Set CA key permissions
+  ansible.builtin.file:
+    path: "{{ ssl_ca_key }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0400"
+  when: not ca_key_stat.stat.exists
+  run_once: true
+
+- name: Check if CA cert exists
+  ansible.builtin.stat:
+    path: "{{ ssl_ca_cert }}"
+  register: ca_cert_stat
+
+- name: Generate CA certificate
+  ansible.builtin.command: >
+    openssl req -new -x509
+    -key {{ ssl_ca_key }}
+    -passin pass:{{ ssl_ca_password }}
+    -out {{ ssl_ca_cert }}
+    -days {{ ssl_ca_validity_days }}
+    -subj "/CN={{ ssl_ca_common_name }}/O={{ ssl_ca_organization }}"
+  when: not ca_cert_stat.stat.exists
+  run_once: true
+  no_log: true
+
+- name: Set CA cert permissions
+  ansible.builtin.file:
+    path: "{{ ssl_ca_cert }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0444"
+  run_once: true
+
+- name: Fetch CA cert to control node
+  ansible.builtin.fetch:
+    src: "{{ ssl_ca_cert }}"
+    dest: "/tmp/kafka-ca/"
+    flat: true
+  run_once: true
+
+- name: Fetch CA key to control node
+  ansible.builtin.fetch:
+    src: "{{ ssl_ca_key }}"
+    dest: "/tmp/kafka-ca/"
+    flat: true
+  run_once: true
+
+- name: Distribute CA cert to all nodes
+  ansible.builtin.copy:
+    src: "/tmp/kafka-ca/ca-cert.pem"
+    dest: "{{ ssl_ca_cert }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0444"
+
+- name: Distribute CA key to all nodes
+  ansible.builtin.copy:
+    src: "/tmp/kafka-ca/ca-key.pem"
+    dest: "{{ ssl_ca_key }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0400"

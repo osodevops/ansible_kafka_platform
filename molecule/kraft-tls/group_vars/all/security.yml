@@ -1,0 +1,34 @@
+---
+# =============================================================================
+# Molecule kraft-tls Scenario — Security / SSL + SCRAM Configuration
+# =============================================================================
+
+# --- TLS / SSL ---
+ssl_ca_password: "molecule-ca-password"
+ssl_keystore_password: "molecule-keystore-password"
+ssl_truststore_password: "molecule-truststore-password"
+ssl_key_password: "molecule-keystore-password"
+
+# --- CA Certificate Settings ---
+ssl_ca_common_name: "Molecule Test CA"
+ssl_ca_organization: "Molecule Test"
+ssl_ca_validity_days: 365
+ssl_cert_validity_days: 365
+
+# --- SCRAM-SHA-512 Users ---
+kafka_scram_users:
+  - username: admin
+    password: "molecule-admin-password"
+    mechanism: SCRAM-SHA-512
+  - username: test-producer
+    password: "molecule-producer-password"
+    mechanism: SCRAM-SHA-512
+
+# --- Super Users (all 5 Kafka nodes) ---
+kafka_super_users:
+  - "User:admin"
+  - "User:CN=controller-01"
+  - "User:CN=controller-02"
+  - "User:CN=controller-03"
+  - "User:CN=broker-01"
+  - "User:CN=broker-02"

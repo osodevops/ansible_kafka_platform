@@ -1,0 +1,144 @@
+---
+# =============================================================================
+# site.yml — Full Kafka Cluster Deployment
+# =============================================================================
+# Execution order:
+#   1. Common (OS prep) on all Kafka nodes
+#   2. Kafka install on all Kafka nodes
+#   3. SSL certificates on all Kafka nodes
+#   4. KRaft controllers (greenfield=parallel, running=serial:1)
+#   5. Kafka brokers (greenfield=parallel, running=serial:1)
+#   6. Prometheus on monitoring node
+#   7. Grafana on monitoring node
+# =============================================================================
+
+# --- Phase 1: OS Prerequisites ---
+- name: "Phase 1: OS prerequisites on Kafka nodes"
+  hosts: kafka
+  gather_facts: true
+  roles:
+    - common
+  tags: [common]
+
+# --- Phase 2: Kafka Installation ---
+- name: "Phase 2: Install Kafka on all Kafka nodes"
+  hosts: kafka
+  gather_facts: false
+  roles:
+    - kafka_install
+  tags: [kafka_install]
+
+# --- Phase 3: SSL/TLS Certificates ---
+- name: "Phase 3: Generate and distribute SSL certificates"
+  hosts: kafka
+  gather_facts: false
+  tasks:
+    - name: Include SSL role
+      ansible.builtin.include_role:
+        name: ssl
+      when: kafka_ssl_enabled | default(true)
+  tags: [ssl]
+
+# --- Phase 4: Detect controller deployment strategy ---
+- name: "Phase 4: Detect controller state for greenfield/brownfield"
+  hosts: kafka_controller
+  gather_facts: false
+  tasks:
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Set controller deployment strategy
+      ansible.builtin.set_fact:
+        kafka_controller_running: "{{ ansible_facts.services.get('kafka.service', {}).get('state', 'stopped') == 'running' }}"
+  tags: [kafka_controller]
+
+# --- Phase 4a: Greenfield controller deployment (parallel) ---
+- name: "Phase 4a: Deploy KRaft controllers (greenfield — parallel)"
+  hosts: kafka_controller
+  gather_facts: false
+  tasks:
+    - name: Include kafka_controller role (greenfield)
+      ansible.builtin.include_role:
+        name: kafka_controller
+      when: not (kafka_controller_running | default(false) | bool)
+  tags: [kafka_controller]
+
+# --- Phase 4b: Rolling controller update (serial) ---
+- name: "Phase 4b: Deploy KRaft controllers (brownfield — serial)"
+  hosts: kafka_controller
+  serial: 1
+  gather_facts: false
+  tasks:
+    - name: Include kafka_controller role (brownfield)
+      ansible.builtin.include_role:
+        name: kafka_controller
+      when: kafka_controller_running | default(false) | bool
+  tags: [kafka_controller]
+
+# --- Phase 5: Detect broker deployment strategy ---
+- name: "Phase 5: Detect broker state for greenfield/brownfield"
+  hosts: kafka_broker
+  gather_facts: false
+  tasks:
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Set broker deployment strategy
+      ansible.builtin.set_fact:
+        kafka_broker_running: "{{ ansible_facts.services.get('kafka.service', {}).get('state', 'stopped') == 'running' }}"
+  tags: [kafka_broker]
+
+# --- Phase 5a: Greenfield broker deployment (parallel) ---
+- name: "Phase 5a: Deploy Kafka brokers (greenfield — parallel)"
+  hosts: kafka_broker
+  gather_facts: false
+  tasks:
+    - name: Include kafka_broker role (greenfield)
+      ansible.builtin.include_role:
+        name: kafka_broker
+      when: not (kafka_broker_running | default(false) | bool)
+  tags: [kafka_broker]
+
+# --- Phase 5b: Rolling broker update (serial) ---
+- name: "Phase 5b: Deploy Kafka brokers (brownfield — serial)"
+  hosts: kafka_broker
+  serial: 1
+  gather_facts: false
+  tasks:
+    - name: Include kafka_broker role (brownfield)
+      ansible.builtin.include_role:
+        name: kafka_broker
+      when: kafka_broker_running | default(false) | bool
+  tags: [kafka_broker]
+
+# --- Phase 6: Monitoring ---
+- name: "Phase 6: Deploy Prometheus"
+  hosts: monitoring
+  gather_facts: true
+  tasks:
+    - name: Include prometheus role
+      ansible.builtin.include_role:
+        name: prometheus
+      when: monitoring_role | default('') == 'prometheus'
+  tags: [monitoring, prometheus]
+
+- name: "Phase 6: Deploy Grafana"
+  hosts: monitoring
+  gather_facts: true
+  tasks:
+    - name: Include grafana role
+      ansible.builtin.include_role:
+        name: grafana
+      when: monitoring_role | default('') == 'grafana'
+  tags: [monitoring, grafana]
+
+# --- Phase 7: Kafka UI ---
+- name: "Phase 7: Deploy Kafka UI"
+  hosts: monitoring
+  gather_facts: false
+  tasks:
+    - name: Include kafka_ui role
+      ansible.builtin.include_role:
+        name: kafka_ui
+      when: monitoring_role | default('') == 'grafana'
+  tags: [monitoring, kafka_ui]

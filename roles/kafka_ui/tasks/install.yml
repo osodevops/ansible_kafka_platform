@@ -1,0 +1,46 @@
+---
+- name: Ensure Java 21 is installed
+  ansible.builtin.apt:
+    name: openjdk-21-jdk-headless
+    state: present
+    update_cache: true
+
+- name: Create kafkaui group
+  ansible.builtin.group:
+    name: "{{ kafka_ui_group }}"
+    system: true
+    state: present
+
+- name: Create kafkaui user
+  ansible.builtin.user:
+    name: "{{ kafka_ui_user }}"
+    group: "{{ kafka_ui_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+    state: present
+
+- name: Create Kafka UI directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ kafka_ui_user }}"
+    group: "{{ kafka_ui_group }}"
+    mode: "0755"
+  loop:
+    - "{{ kafka_ui_install_dir }}"
+    - "{{ kafka_ui_config_dir }}"
+
+- name: Check if Kafka UI JAR is installed
+  ansible.builtin.stat:
+    path: "{{ kafka_ui_install_dir }}/{{ kafka_ui_jar }}"
+  register: kafka_ui_binary
+
+- name: Download Kafka UI JAR
+  ansible.builtin.get_url:
+    url: "{{ kafka_ui_download_url }}"
+    dest: "{{ kafka_ui_install_dir }}/{{ kafka_ui_jar }}"
+    owner: "{{ kafka_ui_user }}"
+    group: "{{ kafka_ui_group }}"
+    mode: "0644"
+  when: not kafka_ui_binary.stat.exists

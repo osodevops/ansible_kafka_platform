@@ -1,0 +1,106 @@
+---
+# =============================================================================
+# Auto-detect Kafka installation path, version, and connection mode
+# =============================================================================
+# Sets:
+#   _kafka_detected_home            — absolute path to Kafka installation
+#   _kafka_detected_version         — version string (e.g. "3.6.0")
+#   _kafka_topics_conn_args         — connection flags for kafka-topics.sh
+#   _kafka_configs_conn_args        — connection flags for kafka-configs.sh
+#   _kafka_configs_supports_all     — whether --all flag is available
+#   kafka_analysis_topics_cmd       — overrides vars/main.yml with detected path
+#   kafka_analysis_configs_cmd      — overrides vars/main.yml with detected path
+# =============================================================================
+
+- name: Check for Kafka installation at common paths
+  ansible.builtin.stat:
+    path: "{{ item }}/bin/kafka-topics.sh"
+  register: _kafka_path_checks
+  loop:
+    - "{{ kafka_current_dir | default('/opt/kafka/current') }}"
+    - "/opt/kafka"
+    - "/usr/local/kafka"
+    - "/home/kafka/kafka"
+  changed_when: false
+
+- name: Set detected Kafka home directory
+  ansible.builtin.set_fact:
+    _kafka_detected_home: "{{ (_kafka_path_checks.results | selectattr('stat.exists') | map(attribute='item') | first) }}"
+  when: _kafka_path_checks.results | selectattr('stat.exists') | list | length > 0
+
+- name: Fail if Kafka installation not found
+  ansible.builtin.fail:
+    msg: >-
+      Could not find kafka-topics.sh at any standard path.
+      Searched: {{ _kafka_path_checks.results | map(attribute='item') | list | join(', ') }}.
+      Set kafka_current_dir in your inventory to the correct path.
+  when: _kafka_detected_home is not defined
+
+- name: Override CLI paths with detected installation
+  ansible.builtin.set_fact:
+    kafka_analysis_topics_cmd: "{{ _kafka_detected_home }}/bin/kafka-topics.sh"
+    kafka_analysis_configs_cmd: "{{ _kafka_detected_home }}/bin/kafka-configs.sh"
+
+- name: Detect Kafka version via --version flag
+  ansible.builtin.command: "{{ kafka_analysis_topics_cmd }} --version"
+  become: true
+  become_user: "{{ kafka_user }}"
+  register: _kafka_version_cmd
+  changed_when: false
+  ignore_errors: true
+
+- name: Parse Kafka version from --version output
+  ansible.builtin.set_fact:
+    _kafka_detected_version: "{{ ((_kafka_version_cmd.stdout | default('')) + ' ' + (_kafka_version_cmd.stderr | default(''))) | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') | first }}"
+  when: _kafka_version_cmd is succeeded
+
+- name: Resolve symlink to detect version from path
+  ansible.builtin.command: "readlink -f {{ _kafka_detected_home }}"
+  register: _kafka_resolved_path
+  changed_when: false
+  when: _kafka_detected_version is not defined
+
+- name: Parse Kafka version from installation path
+  ansible.builtin.set_fact:
+    _kafka_detected_version: "{{ _kafka_resolved_path.stdout | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') | first | default('unknown') }}"
+  when: _kafka_detected_version is not defined and _kafka_resolved_path is defined
+
+- name: Default version to unknown
+  ansible.builtin.set_fact:
+    _kafka_detected_version: "unknown"
+  when: _kafka_detected_version is not defined
+
+# kafka-configs.sh --bootstrap-server with --all flag requires Kafka >= 2.6
+- name: Determine if kafka-configs supports --bootstrap-server --all
+  ansible.builtin.set_fact:
+    _kafka_configs_supports_all: "{{ _kafka_detected_version is not match('unknown') and _kafka_detected_version is version('2.6.0', '>=') }}"
+    _kafka_use_bootstrap_for_configs: "{{ _kafka_detected_version is not match('unknown') and _kafka_detected_version is version('2.6.0', '>=') }}"
+
+- name: Check if client.properties exists on target
+  ansible.builtin.stat:
+    path: "{{ kafka_analysis_client_config }}"
+  register: _client_config_check
+  changed_when: false
+
+- name: Set connection arguments for kafka-topics.sh
+  ansible.builtin.set_fact:
+    _kafka_topics_conn_args: >-
+      --bootstrap-server {{ kafka_analysis_bootstrap_server }}
+      {{ '--command-config ' + kafka_analysis_client_config if _client_config_check.stat.exists | default(false) else '' }}
+
+- name: Set connection arguments for kafka-configs.sh
+  ansible.builtin.set_fact:
+    _kafka_configs_conn_args: >-
+      {% if _kafka_use_bootstrap_for_configs | bool %}
+      --bootstrap-server {{ kafka_analysis_bootstrap_server }}
+      {{ '--command-config ' + kafka_analysis_client_config if _client_config_check.stat.exists | default(false) else '' }}
+      {% else %}
+      --zookeeper {{ kafka_analysis_zookeeper_connect }}
+      {% endif %}
+
+- name: Display detected environment
+  ansible.builtin.debug:
+    msg: >-
+      Detected Kafka {{ _kafka_detected_version }} at {{ _kafka_detected_home }}.
+      Config query mode: {{ 'bootstrap-server' if _kafka_use_bootstrap_for_configs | bool else 'zookeeper' }}.
+      Client config: {{ 'present' if _client_config_check.stat.exists | default(false) else 'absent (plaintext assumed)' }}.

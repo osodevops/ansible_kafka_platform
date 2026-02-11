@@ -1,0 +1,50 @@
+---
+- name: Wait for broker to be listening on SSL port {{ kafka_broker_ssl_port }}
+  ansible.builtin.wait_for:
+    port: "{{ kafka_broker_ssl_port }}"
+    host: "{{ kafka_health_check_address }}"
+    timeout: "{{ kafka_broker_port_timeout }}"
+  when: kafka_ssl_enabled | default(true)
+
+- name: Wait for broker to be listening on PLAINTEXT port {{ kafka_broker_plaintext_port }}
+  ansible.builtin.wait_for:
+    port: "{{ kafka_broker_plaintext_port }}"
+    host: "{{ kafka_health_check_address }}"
+    timeout: "{{ kafka_broker_port_timeout }}"
+  when: not (kafka_ssl_enabled | default(true))
+
+- name: Wait for broker SASL_SSL port {{ kafka_broker_sasl_ssl_port }}
+  ansible.builtin.wait_for:
+    port: "{{ kafka_broker_sasl_ssl_port }}"
+    host: "{{ kafka_health_check_address }}"
+    timeout: "{{ kafka_broker_port_timeout }}"
+  when: kafka_sasl_enabled | default(true)
+
+- name: Wait for JMX exporter port
+  ansible.builtin.wait_for:
+    port: "{{ jmx_exporter_port }}"
+    host: "{{ kafka_health_check_address }}"
+    timeout: "{{ kafka_broker_port_timeout }}"
+
+- name: Check for under-replicated partitions
+  ansible.builtin.command: >
+    {{ kafka_current_dir }}/bin/kafka-topics.sh
+    --bootstrap-server {{ ansible_host }}:{{ kafka_broker_client_port }}
+    --command-config {{ kafka_broker_client_config }}
+    --describe --under-replicated-partitions
+  become: true
+  become_user: "{{ kafka_user }}"
+  register: urp_check
+  retries: "{{ kafka_broker_health_check_retries }}"
+  delay: "{{ kafka_broker_health_check_delay }}"
+  until: urp_check.stdout == ""
+  changed_when: false
+  run_once: true
+
+- name: Assert zero under-replicated partitions
+  ansible.builtin.assert:
+    that:
+      - urp_check.stdout == ""
+    fail_msg: "Under-replicated partitions detected: {{ urp_check.stdout }}"
+    success_msg: "No under-replicated partitions"
+  run_once: true

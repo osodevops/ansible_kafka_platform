@@ -1,0 +1,7 @@
+---
+- name: "OS prerequisites on Kafka nodes"
+  hosts: kafka
+  gather_facts: true
+  roles:
+    - common
+  tags: [common]

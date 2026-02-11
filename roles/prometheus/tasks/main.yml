@@ -1,0 +1,8 @@
+---
+- name: Include Prometheus install tasks
+  ansible.builtin.include_tasks: install.yml
+  tags: [prometheus, install]
+
+- name: Include Prometheus configure tasks
+  ansible.builtin.include_tasks: configure.yml
+  tags: [prometheus, configure]

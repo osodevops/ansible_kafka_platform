@@ -1,0 +1,16 @@
+---
+- name: Create kafka group
+  ansible.builtin.group:
+    name: "{{ kafka_group }}"
+    system: true
+    state: present
+
+- name: Create kafka user
+  ansible.builtin.user:
+    name: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ kafka_base_dir }}"
+    create_home: false
+    state: present

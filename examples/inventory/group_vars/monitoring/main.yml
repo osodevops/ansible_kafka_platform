@@ -1,0 +1,7 @@
+---
+# =============================================================================
+# Monitoring Group Overrides
+# =============================================================================
+
+# Monitoring nodes don't need Kafka-specific tuning
+ansible_become: true

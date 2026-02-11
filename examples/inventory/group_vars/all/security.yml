@@ -1,0 +1,42 @@
+---
+# =============================================================================
+# Security Configuration — TLS + SASL/SCRAM
+# =============================================================================
+# IMPORTANT: In production, encrypt this file with ansible-vault:
+#   ansible-vault encrypt inventory/group_vars/all/security.yml
+# =============================================================================
+
+# --- SSL/TLS ---
+kafka_ssl_enabled: true
+ssl_ca_common_name: "Example Org Kafka CA"
+ssl_ca_organization: "Example Organization"
+ssl_ca_validity_days: 3650
+ssl_cert_validity_days: 365
+ssl_keystore_password: "CHANGE_ME_keystore_password"
+ssl_truststore_password: "CHANGE_ME_truststore_password"
+ssl_key_password: "CHANGE_ME_key_password"
+
+# --- SASL/SCRAM ---
+kafka_sasl_enabled: true
+kafka_sasl_mechanism: "SCRAM-SHA-512"
+kafka_super_users:
+  - "User:admin"
+
+# --- Inter-Broker Security ---
+kafka_inter_broker_protocol: SSL
+kafka_controller_listener_protocol: SSL
+
+# --- SCRAM Users ---
+# Define application SCRAM users and their passwords
+# In production, use ansible-vault to encrypt passwords
+kafka_scram_users:
+  - username: admin
+    password: "CHANGE_ME_admin_password"
+  - username: app-producer
+    password: "CHANGE_ME_producer_password"
+  - username: app-consumer
+    password: "CHANGE_ME_consumer_password"
+  - username: app-processor
+    password: "CHANGE_ME_processor_password"
+  - username: metrics-reader
+    password: "CHANGE_ME_metrics_password"

@@ -1,0 +1,5 @@
+# Kafka security limits — managed by Ansible
+{{ kafka_user }}  soft  nofile  {{ kafka_nofile_limit }}
+{{ kafka_user }}  hard  nofile  {{ kafka_nofile_limit }}
+{{ kafka_user }}  soft  nproc   {{ kafka_nproc_limit }}
+{{ kafka_user }}  hard  nproc   {{ kafka_nproc_limit }}

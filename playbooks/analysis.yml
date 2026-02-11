@@ -1,0 +1,7 @@
+---
+- name: "Analyse Kafka topic configuration"
+  hosts: kafka_broker[0]
+  gather_facts: false
+  roles:
+    - kafka_analysis
+  tags: [analysis]

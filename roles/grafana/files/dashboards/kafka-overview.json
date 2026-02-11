@@ -1,0 +1,122 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 0 }] } }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Active Controller",
+      "type": "stat",
+      "targets": [{ "expr": "sum(kafka_controller_activecontrollercount)", "legendFormat": "" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "thresholds": { "steps": [{ "color": "green", "value": null }] } }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Brokers Online",
+      "type": "stat",
+      "targets": [{ "expr": "count(up{job=\"kafka\"} == 1)", "legendFormat": "" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "id": 3,
+      "options": { "colorMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Under-Replicated Partitions",
+      "type": "stat",
+      "targets": [{ "expr": "sum(kafka_server_under_replicated_partitions)", "legendFormat": "" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "thresholds": { "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "id": 4,
+      "options": { "colorMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Offline Partitions",
+      "type": "stat",
+      "targets": [{ "expr": "sum(kafka_controller_offlinepartitionscount)", "legendFormat": "" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "thresholds": { "steps": [{ "color": "green", "value": null }] } }
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "id": 5,
+      "options": { "colorMode": "value", "reduceOptions": { "calcs": ["lastNotNull"] } },
+      "title": "Total Partitions",
+      "type": "stat",
+      "targets": [{ "expr": "sum(kafka_server_partition_count)", "legendFormat": "" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 6,
+      "title": "Bytes In per Broker",
+      "type": "timeseries",
+      "targets": [{ "expr": "rate(kafka_server_broker_topic_metrics_bytesinpersec_total[5m])", "legendFormat": "{{ instance }}" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 7,
+      "title": "Bytes Out per Broker",
+      "type": "timeseries",
+      "targets": [{ "expr": "rate(kafka_server_broker_topic_metrics_bytesoutpersec_total[5m])", "legendFormat": "{{ instance }}" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 8,
+      "title": "Messages In per Broker",
+      "type": "timeseries",
+      "targets": [{ "expr": "rate(kafka_server_broker_topic_metrics_messagesinpersec_total[5m])", "legendFormat": "{{ instance }}" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 9,
+      "title": "ISR Shrink / Expand Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(kafka_server_isr_shrink_total[5m])", "legendFormat": "Shrink {{ instance }}" },
+        { "expr": "rate(kafka_server_isr_expand_total[5m])", "legendFormat": "Expand {{ instance }}" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["kafka"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "Prometheus", "value": "Prometheus" },
+        "hide": 0,
+        "includeAll": false,
+        "name": "datasource",
+        "query": "prometheus",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Kafka Cluster Overview",
+  "uid": "kafka-overview"
+}

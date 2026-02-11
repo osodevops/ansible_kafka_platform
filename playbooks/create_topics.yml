@@ -1,0 +1,7 @@
+---
+- name: "Create Kafka topics"
+  hosts: kafka_broker[0]
+  gather_facts: false
+  roles:
+    - kafka_topics
+  tags: [topics]

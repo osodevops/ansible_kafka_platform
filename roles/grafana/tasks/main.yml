@@ -1,0 +1,8 @@
+---
+- name: Include Grafana install tasks
+  ansible.builtin.include_tasks: install.yml
+  tags: [grafana, install]
+
+- name: Include Grafana configure tasks
+  ansible.builtin.include_tasks: configure.yml
+  tags: [grafana, configure]

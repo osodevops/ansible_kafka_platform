@@ -1,0 +1,30 @@
+---
+- name: "Deploy Prometheus"
+  hosts: monitoring
+  gather_facts: true
+  tasks:
+    - name: Include prometheus role
+      ansible.builtin.include_role:
+        name: prometheus
+      when: monitoring_role | default('') == 'prometheus'
+  tags: [monitoring, prometheus]
+
+- name: "Deploy Grafana"
+  hosts: monitoring
+  gather_facts: true
+  tasks:
+    - name: Include grafana role
+      ansible.builtin.include_role:
+        name: grafana
+      when: monitoring_role | default('') == 'grafana'
+  tags: [monitoring, grafana]
+
+- name: "Deploy Kafka UI"
+  hosts: monitoring
+  gather_facts: false
+  tasks:
+    - name: Include kafka_ui role
+      ansible.builtin.include_role:
+        name: kafka_ui
+      when: monitoring_role | default('') == 'grafana'
+  tags: [monitoring, kafka_ui]

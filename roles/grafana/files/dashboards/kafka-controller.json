@@ -1,0 +1,82 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Active Controller Count",
+      "type": "stat",
+      "targets": [{ "expr": "sum(kafka_controller_activecontrollercount)", "legendFormat": "" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "title": "Controller Nodes Up",
+      "type": "stat",
+      "targets": [{ "expr": "count(up{job=\"kafka\"} == 1)", "legendFormat": "" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 3,
+      "title": "Raft Commit Latency",
+      "type": "timeseries",
+      "targets": [{ "expr": "kafka_raft_commit_latency_avg{instance=~\"$instance\"}", "legendFormat": "{{ instance }}" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 4,
+      "title": "Raft Log End Offset",
+      "type": "timeseries",
+      "targets": [{ "expr": "kafka_raft_log_end_offset{instance=~\"$instance\"}", "legendFormat": "{{ instance }}" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 5,
+      "title": "Leader Elections",
+      "type": "timeseries",
+      "targets": [{ "expr": "rate(kafka_controller_leaderelectionrateandtimems_count[5m])", "legendFormat": "{{ instance }}" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 6,
+      "title": "Controller Request Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(kafka_network_requests_per_sec_total{instance=~\"$instance\"}[5m])", "legendFormat": "{{ request }}" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["kafka", "controller"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "Prometheus", "value": "Prometheus" },
+        "name": "datasource",
+        "query": "prometheus",
+        "type": "datasource"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "definition": "label_values(up{instance=~\".*:7071\"}, instance)",
+        "name": "instance",
+        "query": "label_values(up{instance=~\".*:7071\"}, instance)",
+        "includeAll": true,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Kafka Controller Detail",
+  "uid": "kafka-controller"
+}

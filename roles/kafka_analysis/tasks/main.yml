@@ -1,0 +1,121 @@
+---
+# =============================================================================
+# Kafka Topic Analysis — Orchestrator
+# =============================================================================
+# Read-only: every CLI command uses only --list or --describe flags.
+# All command tasks are annotated changed_when: false.
+# =============================================================================
+
+- name: Gather date/time facts
+  ansible.builtin.setup:
+    filter: ansible_date_time
+  run_once: true
+
+# --- Environment detection (optional, for unknown/legacy clusters) ---
+- name: Auto-detect Kafka environment
+  ansible.builtin.include_tasks: detect_environment.yml
+  when: kafka_analysis_auto_detect | default(false) | bool
+  run_once: true
+
+# --- Set connection args for known clusters (skip if auto-detect already set them) ---
+- name: Set connection arguments from configured variables
+  ansible.builtin.set_fact:
+    _kafka_topics_conn_args: >-
+      --bootstrap-server {{ kafka_analysis_bootstrap_server }}
+      --command-config {{ kafka_analysis_client_config }}
+    _kafka_configs_conn_args: >-
+      --bootstrap-server {{ kafka_analysis_bootstrap_server }}
+      --command-config {{ kafka_analysis_client_config }}
+    _kafka_configs_supports_all: true
+    _kafka_detected_version: "{{ kafka_version | default('unknown') }}"
+  when: _kafka_topics_conn_args is not defined
+  run_once: true
+
+# --- List topics ---
+- name: List all topics
+  ansible.builtin.command: >
+    {{ kafka_analysis_topics_cmd }}
+    {{ _kafka_topics_conn_args }}
+    --list
+  become: true
+  become_user: "{{ kafka_user }}"
+  register: _topic_list_raw
+  changed_when: false
+  run_once: true
+
+- name: Build topic list (optionally excluding internal topics)
+  ansible.builtin.set_fact:
+    _topic_names: >-
+      {{ _topic_list_raw.stdout_lines
+         | reject('match', '^$')
+         | reject('match', '^__')
+         | list
+         if not kafka_analysis_include_internal_topics
+         else
+         _topic_list_raw.stdout_lines
+         | reject('match', '^$')
+         | list }}
+  run_once: true
+
+# --- Per-topic collection loop ---
+- name: Initialise topic details accumulator
+  ansible.builtin.set_fact:
+    _topic_details: []
+  run_once: true
+
+- name: Collect details for each topic
+  ansible.builtin.include_tasks: collect_topics.yml
+  loop: "{{ _topic_names }}"
+  loop_control:
+    loop_var: _topic_name
+    label: "{{ _topic_name }}"
+  run_once: true
+
+# --- Assemble and write report ---
+- name: Calculate summary statistics
+  ansible.builtin.set_fact:
+    _total_partitions: "{{ _topic_details | map(attribute='partition_count') | map('int') | sum }}"
+  run_once: true
+
+- name: Assemble analysis report
+  ansible.builtin.set_fact:
+    _analysis_report:
+      metadata:
+        generated_at: "{{ ansible_date_time.iso8601 }}"
+        cluster_bootstrap: "{{ kafka_analysis_bootstrap_server }}"
+        kafka_version: "{{ _kafka_detected_version }}"
+        broker_count: "{{ groups['kafka_broker'] | default([]) | length }}"
+        controller_count: "{{ groups.get('kafka_controller', []) | length }}"
+        zookeeper_count: "{{ groups.get('kafka_zookeeper', []) | length }}"
+        inventory: "{{ inventory_dir | basename }}"
+      summary:
+        total_topics: "{{ _topic_details | length }}"
+        total_partitions: "{{ _total_partitions }}"
+      topics: "{{ _topic_details }}"
+  run_once: true
+
+- name: Ensure report directory exists
+  ansible.builtin.file:
+    path: "{{ kafka_analysis_report_dir }}"
+    state: directory
+    mode: "0755"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Write JSON report
+  ansible.builtin.copy:
+    content: "{{ _analysis_report | to_nice_json }}\n"
+    dest: "{{ kafka_analysis_report_dir }}/topic_analysis_{{ ansible_date_time.iso8601_basic_short }}.json"
+    mode: "0644"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Display summary
+  ansible.builtin.debug:
+    msg: >-
+      Analysis complete — {{ _topic_details | length }} topics,
+      {{ _total_partitions }} partitions (Kafka {{ _kafka_detected_version }}).
+      Report written to {{ kafka_analysis_report_dir }}/topic_analysis_{{ ansible_date_time.iso8601_basic_short }}.json
+  run_once: true

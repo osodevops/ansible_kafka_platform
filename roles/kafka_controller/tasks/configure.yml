@@ -1,0 +1,35 @@
+---
+- name: Template controller server.properties
+  ansible.builtin.template:
+    src: server.properties.j2
+    dest: "{{ kafka_controller_config_file }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0640"
+  notify: restart kafka controller
+
+- name: Template controller client.properties
+  ansible.builtin.template:
+    src: client.properties.j2
+    dest: "{{ kafka_controller_client_config }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0640"
+
+- name: Template log4j2.properties
+  ansible.builtin.template:
+    src: log4j2.properties.j2
+    dest: "{{ kafka_controller_log4j_config }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0644"
+  notify: restart kafka controller
+
+- name: Template JMX exporter config
+  ansible.builtin.template:
+    src: jmx-exporter.yml.j2
+    dest: "{{ kafka_controller_jmx_config }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0644"
+  notify: restart kafka controller

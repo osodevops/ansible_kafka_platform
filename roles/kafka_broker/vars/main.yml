@@ -1,0 +1,8 @@
+---
+# Internal variables for kafka_broker role
+kafka_service_name: "kafka"
+kafka_broker_config_file: "{{ kafka_config_dir }}/server.properties"
+kafka_broker_client_config: "{{ kafka_config_dir }}/client.properties"
+kafka_broker_log4j_config: "{{ kafka_config_dir }}/log4j2.properties"
+kafka_broker_jmx_config: "{{ kafka_monitoring_dir }}/jmx-exporter.yml"
+kafka_broker_jaas_config: "{{ kafka_config_dir }}/kafka_server_jaas.conf"

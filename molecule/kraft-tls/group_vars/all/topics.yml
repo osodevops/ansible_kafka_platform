@@ -1,0 +1,21 @@
+---
+# =============================================================================
+# Molecule kraft-tls Scenario — Test Topic Definitions
+# =============================================================================
+
+kafka_topics:
+  - name: molecule_test_topic_1
+    partitions: 2
+    replication_factor: 2
+    config:
+      retention.ms: "3600000"
+      cleanup.policy: "delete"
+    owner: "test-producer"
+
+  - name: molecule_test_topic_2
+    partitions: 2
+    replication_factor: 2
+    config:
+      retention.ms: "3600000"
+      cleanup.policy: "compact"
+    owner: "test-producer"

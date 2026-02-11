@@ -1,0 +1,22 @@
+# Prometheus configuration — managed by Ansible
+global:
+  scrape_interval: {{ prometheus_scrape_interval }}
+  evaluation_interval: {{ prometheus_evaluation_interval }}
+
+rule_files:
+  - "rules/*.yml"
+
+scrape_configs:
+  - job_name: "kafka"
+    static_configs:
+      - targets:
+{% for target in prometheus_kafka_targets %}
+          - "{{ target }}"
+{% endfor %}
+        labels:
+          cluster: "{{ kafka_ui_cluster_name | default('kafka-cluster') }}"
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets:
+          - "localhost:{{ prometheus_port }}"

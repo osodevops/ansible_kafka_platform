@@ -1,0 +1,8 @@
+---
+# Prometheus role defaults
+prometheus_user: "prometheus"
+prometheus_group: "prometheus"
+prometheus_config_dir: "/etc/prometheus"
+prometheus_version: "3.2.1"
+prometheus_arch: "{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}"
+prometheus_binary_url: "https://github.com/prometheus/prometheus/releases/download/v{{ prometheus_version }}/prometheus-{{ prometheus_version }}.linux-{{ prometheus_arch }}.tar.gz"

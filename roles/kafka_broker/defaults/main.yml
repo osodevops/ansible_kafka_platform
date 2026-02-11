@@ -1,0 +1,7 @@
+---
+# kafka_broker role defaults
+kafka_broker_health_check_retries: 15
+kafka_broker_health_check_delay: 10
+kafka_broker_port_timeout: 120
+kafka_health_check_address: "{{ ansible_host }}"
+kafka_broker_client_port: "{{ kafka_broker_ssl_port }}"

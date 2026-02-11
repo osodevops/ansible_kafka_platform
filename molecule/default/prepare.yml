@@ -1,0 +1,87 @@
+---
+- name: Prepare all hosts for molecule testing
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Wait for systemd to be ready
+      ansible.builtin.command: systemctl is-system-running --wait
+      register: systemd_status
+      until: systemd_status.rc == 0 or 'running' in (systemd_status.stdout | default('')) or 'degraded' in (systemd_status.stdout | default(''))
+      retries: 30
+      delay: 2
+      changed_when: false
+      failed_when: false
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install Python apt module
+      ansible.builtin.apt:
+        name:
+          - python3-apt
+          - gpg
+          - gpg-agent
+        state: present
+
+    - name: Create man directory (required for Java alternatives on Docker)
+      ansible.builtin.file:
+        path: /usr/share/man/man1
+        state: directory
+        mode: "0755"
+        recurse: true
+
+- name: Prepare Kafka nodes
+  hosts: kafka
+  gather_facts: false
+  tasks:
+    - name: Create kafka group for prepare
+      ansible.builtin.group:
+        name: kafka
+        system: true
+        state: present
+
+    - name: Create kafka user for prepare
+      ansible.builtin.user:
+        name: kafka
+        group: kafka
+        system: true
+        shell: /usr/sbin/nologin
+        create_home: false
+        state: present
+
+    - name: Create stub data directories (replace block devices)
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: kafka
+        group: kafka
+        mode: "0755"
+      loop:
+        - /data
+        - /data/kafka
+        - /data/kafka/logs
+        - /data/kafka/metadata
+
+    - name: Create /etc/environment if missing
+      ansible.builtin.file:
+        path: /etc/environment
+        state: touch
+        mode: "0644"
+        modification_time: preserve
+        access_time: preserve
+
+- name: Prepare monitoring nodes
+  hosts: monitoring
+  gather_facts: false
+  tasks:
+    - name: Create stub monitoring data directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /data
+        - /data/prometheus
+        - /data/grafana

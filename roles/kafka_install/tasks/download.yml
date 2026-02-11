@@ -1,0 +1,24 @@
+---
+- name: Check if Kafka is already downloaded
+  ansible.builtin.stat:
+    path: "{{ kafka_install_dir }}"
+  register: kafka_install_check
+
+- name: Download Kafka tarball (with checksum)
+  ansible.builtin.get_url:
+    url: "{{ kafka_download_url }}"
+    dest: "{{ kafka_download_dest }}"
+    mode: "0644"
+    checksum: "{{ kafka_download_checksum }}:{{ kafka_download_url }}.{{ kafka_download_checksum }}"
+  when:
+    - not kafka_install_check.stat.exists or kafka_force_download
+    - kafka_download_checksum | length > 0
+
+- name: Download Kafka tarball (without checksum)
+  ansible.builtin.get_url:
+    url: "{{ kafka_download_url }}"
+    dest: "{{ kafka_download_dest }}"
+    mode: "0644"
+  when:
+    - not kafka_install_check.stat.exists or kafka_force_download
+    - kafka_download_checksum | length == 0

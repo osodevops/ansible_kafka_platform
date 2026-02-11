@@ -1,0 +1,10 @@
+---
+- name: "Deploy Kafka brokers"
+  hosts: kafka_broker
+  gather_facts: true
+  roles:
+    - common
+    - kafka_install
+    - ssl
+    - kafka_broker
+  tags: [kafka_broker]

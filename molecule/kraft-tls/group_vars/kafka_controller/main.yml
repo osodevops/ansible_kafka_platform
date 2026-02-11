@@ -1,0 +1,42 @@
+---
+# =============================================================================
+# Molecule kraft-tls — Controller Group Configuration
+# =============================================================================
+
+kafka_process_roles: "controller"
+
+# --- Controller Listener ---
+kafka_controller_listener_name: "CONTROLLER"
+kafka_controller_listener_security_protocol: "SSL"
+kafka_controller_listener: "CONTROLLER://{{ inventory_hostname }}:{{ kafka_controller_port }}"
+
+# --- Metadata Storage ---
+kafka_metadata_log_dir: "{{ kafka_data_dir }}/metadata"
+
+# --- Controller-specific server.properties ---
+kafka_controller_properties:
+  process.roles: "controller"
+  controller.listener.names: "CONTROLLER"
+  listeners: "CONTROLLER://:{{ kafka_controller_port }}"
+  listener.security.protocol.map: "CONTROLLER:SSL"
+  controller.quorum.voters: "{{ kafka_controller_quorum_voters }}"
+  controller.quorum.bootstrap.servers: "{{ kafka_controller_quorum_bootstrap_servers }}"
+  metadata.log.dir: "{{ kafka_metadata_log_dir }}"
+  # SSL for controller listener
+  listener.name.controller.ssl.keystore.location: "{{ kafka_ssl_dir }}/{{ inventory_hostname }}.keystore.p12"
+  listener.name.controller.ssl.keystore.password: "{{ ssl_keystore_password }}"
+  listener.name.controller.ssl.keystore.type: "PKCS12"
+  listener.name.controller.ssl.key.password: "{{ ssl_key_password }}"
+  listener.name.controller.ssl.truststore.location: "{{ kafka_ssl_dir }}/kafka.truststore.p12"
+  listener.name.controller.ssl.truststore.password: "{{ ssl_truststore_password }}"
+  listener.name.controller.ssl.truststore.type: "PKCS12"
+  listener.name.controller.ssl.client.auth: "required"
+  ssl.enabled.protocols: "{{ kafka_ssl_enabled_protocols }}"
+  # SSL principal mapping — extract CN from full DN
+  ssl.principal.mapping.rules: "RULE:^.*CN=([^,]*).*$/CN=$1/,DEFAULT"
+  # Authorizer
+  authorizer.class.name: "{{ kafka_authorizer_class }}"
+  super.users: "{{ kafka_super_users | join(';') }}"
+
+# --- Storage: empty for Docker ---
+kafka_controller_storage_mounts: []

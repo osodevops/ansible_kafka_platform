@@ -1,0 +1,82 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Heap Memory Used",
+      "type": "timeseries",
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [{ "expr": "jvm_heap_memory_used{instance=~\"$instance\"}", "legendFormat": "{{ instance }}" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "title": "Heap Memory Committed",
+      "type": "timeseries",
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [{ "expr": "jvm_heap_memory_committed{instance=~\"$instance\"}", "legendFormat": "{{ instance }}" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "id": 3,
+      "title": "GC Collection Rate",
+      "type": "timeseries",
+      "targets": [{ "expr": "rate(jvm_gc_collection_count{instance=~\"$instance\"}[5m])", "legendFormat": "{{ instance }} {{ gc }}" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "id": 4,
+      "title": "GC Time Rate (ms/s)",
+      "type": "timeseries",
+      "targets": [{ "expr": "rate(jvm_gc_collection_time_ms{instance=~\"$instance\"}[5m])", "legendFormat": "{{ instance }} {{ gc }}" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 5,
+      "title": "Thread Count",
+      "type": "timeseries",
+      "targets": [{ "expr": "jvm_thread_count{instance=~\"$instance\"}", "legendFormat": "{{ instance }}" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 6,
+      "title": "Open File Descriptors",
+      "type": "timeseries",
+      "targets": [{ "expr": "jvm_open_file_descriptors{instance=~\"$instance\"}", "legendFormat": "{{ instance }}" }]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["kafka", "jvm"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "Prometheus", "value": "Prometheus" },
+        "name": "datasource",
+        "query": "prometheus",
+        "type": "datasource"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "definition": "label_values(jvm_heap_memory_used, instance)",
+        "name": "instance",
+        "query": "label_values(jvm_heap_memory_used, instance)",
+        "includeAll": true,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "JVM Metrics",
+  "uid": "jvm-metrics"
+}

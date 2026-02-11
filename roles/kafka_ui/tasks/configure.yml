@@ -1,0 +1,25 @@
+---
+- name: Template Kafka UI configuration
+  ansible.builtin.template:
+    src: application.yml.j2
+    dest: "{{ kafka_ui_config_dir }}/application.yml"
+    owner: "{{ kafka_ui_user }}"
+    group: "{{ kafka_ui_group }}"
+    mode: "0644"
+  notify: restart kafka-ui
+
+- name: Template Kafka UI systemd service
+  ansible.builtin.template:
+    src: kafka-ui.service.j2
+    dest: /etc/systemd/system/kafka-ui.service
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart kafka-ui
+
+- name: Enable and start Kafka UI
+  ansible.builtin.systemd:
+    name: kafka-ui
+    enabled: true
+    state: started
+    daemon_reload: true

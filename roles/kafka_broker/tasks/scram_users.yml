@@ -1,0 +1,16 @@
+---
+- name: Create SCRAM-SHA-512 users
+  ansible.builtin.command: >
+    {{ kafka_current_dir }}/bin/kafka-configs.sh
+    --bootstrap-server {{ ansible_host }}:{{ kafka_broker_ssl_port }}
+    --command-config {{ kafka_broker_client_config }}
+    --alter
+    --add-config 'SCRAM-SHA-512=[password={{ item.password }}]'
+    --entity-type users
+    --entity-name {{ item.username }}
+  become: true
+  become_user: "{{ kafka_user }}"
+  loop: "{{ kafka_scram_users }}"
+  run_once: true
+  no_log: true
+  changed_when: false

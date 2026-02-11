@@ -1,0 +1,30 @@
+---
+# =============================================================================
+# Monitoring Configuration — Prometheus, Grafana, Kafka UI
+# =============================================================================
+
+# --- Prometheus ---
+prometheus_version: "2.53.0"
+prometheus_port: 9090
+prometheus_host: "192.0.2.31"
+prometheus_retention_days: 30
+prometheus_scrape_interval: "15s"
+
+# Kafka JMX exporter targets (auto-built from inventory in production)
+prometheus_kafka_targets:
+  - "192.0.2.11:{{ kafka_jmx_exporter_port }}"
+  - "192.0.2.12:{{ kafka_jmx_exporter_port }}"
+  - "192.0.2.13:{{ kafka_jmx_exporter_port }}"
+  - "192.0.2.21:{{ kafka_jmx_exporter_port }}"
+  - "192.0.2.22:{{ kafka_jmx_exporter_port }}"
+  - "192.0.2.23:{{ kafka_jmx_exporter_port }}"
+
+# --- Grafana ---
+grafana_version: "11.1.0"
+grafana_port: 3000
+grafana_host: "192.0.2.32"
+grafana_admin_password: "CHANGE_ME_grafana_password"
+
+# --- Kafka UI (Kafbat) ---
+kafka_ui_cluster_name: "kafka-cluster"
+kafka_ui_bootstrap_servers: "192.0.2.21:9092,192.0.2.22:9092,192.0.2.23:9092"

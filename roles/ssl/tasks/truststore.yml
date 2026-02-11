@@ -1,0 +1,24 @@
+---
+- name: Check if truststore exists
+  ansible.builtin.stat:
+    path: "{{ ssl_truststore_file }}"
+  register: truststore_stat
+
+- name: Create PKCS12 truststore with CA cert
+  ansible.builtin.command: >
+    keytool -importcert
+    -alias kafka-ca
+    -file {{ ssl_ca_cert }}
+    -keystore {{ ssl_truststore_file }}
+    -storetype PKCS12
+    -storepass {{ ssl_truststore_password }}
+    -noprompt
+  when: not truststore_stat.stat.exists
+  no_log: true
+
+- name: Set truststore permissions
+  ansible.builtin.file:
+    path: "{{ ssl_truststore_file }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0444"

@@ -1,0 +1,22 @@
+[Unit]
+Description=Apache Kafka Broker
+Documentation=https://kafka.apache.org
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ kafka_user }}
+Group={{ kafka_group }}
+ExecStart={{ kafka_current_dir }}/bin/kafka-server-start.sh {{ kafka_config_dir }}/server.properties
+ExecStop={{ kafka_current_dir }}/bin/kafka-server-stop.sh
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=128000
+LimitNPROC=65536
+OOMScoreAdjust=-500
+NoNewPrivileges=true
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

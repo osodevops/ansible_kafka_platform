@@ -1,0 +1,147 @@
+---
+# =============================================================================
+# health_check.yml — Full Cluster Health Verification
+# =============================================================================
+
+- name: "Health check: Kafka controller quorum"
+  hosts: kafka_controller
+  gather_facts: false
+  tasks:
+    - name: Verify controller service is running
+      ansible.builtin.systemd:
+        name: kafka
+      register: controller_service
+      failed_when: controller_service.status.ActiveState != "active"
+
+    - name: Verify controller port is listening
+      ansible.builtin.wait_for:
+        port: "{{ kafka_controller_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 10
+
+    - name: Verify JMX exporter port
+      ansible.builtin.wait_for:
+        port: "{{ kafka_jmx_exporter_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 10
+
+    - name: Check KRaft quorum status
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-metadata-quorum.sh
+        --bootstrap-controller {{ kafka_controller_quorum_bootstrap_servers }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        describe --replication
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: quorum_check
+      changed_when: false
+      run_once: true
+
+    - name: Display quorum status
+      ansible.builtin.debug:
+        msg: "{{ quorum_check.stdout_lines }}"
+      run_once: true
+  tags: [health, controllers]
+
+- name: "Health check: Kafka brokers"
+  hosts: kafka_broker
+  gather_facts: false
+  tasks:
+    - name: Verify broker service is running
+      ansible.builtin.systemd:
+        name: kafka
+      register: broker_service
+      failed_when: broker_service.status.ActiveState != "active"
+
+    - name: Verify SSL port is listening
+      ansible.builtin.wait_for:
+        port: "{{ kafka_broker_ssl_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 10
+
+    - name: Verify SASL_SSL port is listening
+      ansible.builtin.wait_for:
+        port: "{{ kafka_broker_sasl_ssl_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 10
+
+    - name: Verify JMX exporter port
+      ansible.builtin.wait_for:
+        port: "{{ kafka_jmx_exporter_port }}"
+        host: "{{ ansible_host }}"
+        timeout: 10
+
+    - name: Check for under-replicated partitions
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-topics.sh
+        --bootstrap-server {{ ansible_host }}:{{ kafka_broker_ssl_port }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        --describe --under-replicated-partitions
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: urp_result
+      changed_when: false
+      run_once: true
+
+    - name: Assert no under-replicated partitions
+      ansible.builtin.assert:
+        that:
+          - urp_result.stdout == ""
+        fail_msg: "Under-replicated partitions found: {{ urp_result.stdout }}"
+        success_msg: "No under-replicated partitions"
+      run_once: true
+
+    - name: List all topics
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-topics.sh
+        --bootstrap-server {{ ansible_host }}:{{ kafka_broker_ssl_port }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        --list
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: topic_list
+      changed_when: false
+      run_once: true
+
+    - name: Display topic count
+      ansible.builtin.debug:
+        msg: "Total topics: {{ topic_list.stdout_lines | length }}"
+      run_once: true
+  tags: [health, brokers]
+
+- name: "Health check: JMX Exporter metrics"
+  hosts: kafka
+  gather_facts: false
+  tasks:
+    - name: Verify JMX exporter is returning metrics
+      ansible.builtin.uri:
+        url: "http://{{ ansible_host }}:{{ kafka_jmx_exporter_port }}/metrics"
+        return_content: false
+        status_code: 200
+      register: jmx_check
+
+    - name: Display JMX exporter status
+      ansible.builtin.debug:
+        msg: "JMX exporter on {{ inventory_hostname }}: OK (HTTP {{ jmx_check.status }})"
+  tags: [health, jmx]
+
+- name: "Health check: Monitoring stack"
+  hosts: monitoring
+  gather_facts: false
+  tasks:
+    - name: Check Prometheus health
+      ansible.builtin.uri:
+        url: "http://{{ prometheus_host }}:{{ prometheus_port }}/-/healthy"
+        return_content: false
+        status_code: 200
+      run_once: true
+      when: monitoring_role | default('') == 'prometheus'
+
+    - name: Check Grafana health
+      ansible.builtin.uri:
+        url: "http://{{ grafana_host }}:{{ grafana_port }}/api/health"
+        return_content: false
+        status_code: 200
+      run_once: true
+      when: monitoring_role | default('') == 'grafana'
+  tags: [health, monitoring]

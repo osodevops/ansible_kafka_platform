@@ -1,0 +1,19 @@
+---
+# =============================================================================
+# Kafka Broker Group Overrides
+# =============================================================================
+
+# Broker-specific heap (brokers need more memory for page cache)
+kafka_heap_opts: "-Xms4g -Xmx4g"
+
+# Broker process role
+kafka_process_roles: "broker"
+
+# GC tuning for brokers
+kafka_jvm_gc_opts: >-
+  -XX:+UseG1GC
+  -XX:MaxGCPauseMillis=20
+  -XX:InitiatingHeapOccupancyPercent=35
+  -XX:G1HeapRegionSize=16M
+  -XX:MinMetaspaceFreeRatio=50
+  -XX:MaxMetaspaceFreeRatio=80

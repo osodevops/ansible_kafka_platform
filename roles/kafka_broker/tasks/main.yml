@@ -1,0 +1,29 @@
+---
+- name: Include broker configuration tasks
+  ansible.builtin.include_tasks: configure.yml
+  tags: [kafka_broker, configure]
+
+- name: Include systemd tasks
+  ansible.builtin.include_tasks: systemd.yml
+  tags: [kafka_broker, systemd]
+
+- name: Include storage format tasks
+  ansible.builtin.include_tasks: format_storage.yml
+  tags: [kafka_broker, format]
+
+- name: Flush handlers to ensure service is started
+  ansible.builtin.meta: flush_handlers
+
+- name: Start Kafka broker service
+  ansible.builtin.systemd:
+    name: kafka
+    state: started
+
+- name: Include health check tasks
+  ansible.builtin.include_tasks: health_check.yml
+  tags: [kafka_broker, health]
+
+- name: Include SCRAM user tasks
+  ansible.builtin.include_tasks: scram_users.yml
+  when: kafka_sasl_enabled | default(true)
+  tags: [kafka_broker, scram]

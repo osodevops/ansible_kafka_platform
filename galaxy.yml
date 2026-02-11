@@ -1,0 +1,42 @@
+---
+namespace: osodevops
+name: kafka_platform
+version: 1.0.0
+readme: README.md
+authors:
+  - OSO DevOps <info@osodevops.io>
+description: >-
+  Production-ready Apache Kafka deployment with KRaft consensus,
+  TLS/SASL security, and full monitoring stack (Prometheus, Grafana, Kafka UI).
+license:
+  - Apache-2.0
+license_file: LICENSE
+tags:
+  - kafka
+  - streaming
+  - kraft
+  - monitoring
+  - prometheus
+  - grafana
+  - security
+  - tls
+  - sasl
+  - scram
+dependencies:
+  ansible.posix: "*"
+  community.general: ">=5.0.0"
+  community.crypto: ">=2.0.0"
+repository: https://github.com/osodevops/ansible-kafka-platform
+documentation: https://github.com/osodevops/ansible-kafka-platform/blob/main/README.md
+homepage: https://github.com/osodevops/ansible-kafka-platform
+issues: https://github.com/osodevops/ansible-kafka-platform/issues
+build_ignore:
+  - .github
+  - .gitignore
+  - molecule
+  - examples
+  - docs
+  - Makefile
+  - "*.tar.gz"
+  - venv
+  - __pycache__

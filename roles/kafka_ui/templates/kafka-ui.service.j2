@@ -1,0 +1,19 @@
+[Unit]
+Description=Kafbat UI for Apache Kafka
+Documentation=https://ui.docs.kafbat.io
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ kafka_ui_user }}
+Group={{ kafka_ui_group }}
+ExecStart={{ java_home }}/bin/java \
+  -Dspring.config.additional-location=file:{{ kafka_ui_config_dir }}/application.yml \
+  -Dserver.port={{ kafka_ui_port }} \
+  -jar {{ kafka_ui_install_dir }}/{{ kafka_ui_jar }}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

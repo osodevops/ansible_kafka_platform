@@ -1,0 +1,12 @@
+---
+# kafka_analysis role defaults
+kafka_analysis_bootstrap_server: "{{ groups['kafka_broker'][0] }}:{{ kafka_broker_client_port | default(kafka_broker_ssl_port) }}"
+kafka_analysis_client_config: "{{ kafka_config_dir | default('/opt/kafka/config') }}/client.properties"
+kafka_analysis_report_dir: "{{ playbook_dir }}/../reports"
+kafka_analysis_include_internal_topics: false
+
+# Auto-detection: set to true for unknown/legacy clusters
+kafka_analysis_auto_detect: false
+
+# ZooKeeper connection string (only used when auto-detect finds Kafka < 2.6)
+kafka_analysis_zookeeper_connect: ""

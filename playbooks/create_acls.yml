@@ -1,0 +1,95 @@
+---
+- name: "Create Kafka ACLs"
+  hosts: kafka_broker[0]
+  gather_facts: false
+  vars:
+    kafka_broker_client_config: "{{ kafka_config_dir }}/client.properties"
+    kafka_acls:
+      # app-producer: produce to ingest topics
+      - principal: "User:app-producer"
+        operation: WRITE
+        resource_type: topic
+        resource_pattern: "ingest_"
+        pattern_type: PREFIXED
+
+      - principal: "User:app-producer"
+        operation: DESCRIBE
+        resource_type: topic
+        resource_pattern: "ingest_"
+        pattern_type: PREFIXED
+
+      # app-processor: produce + consume on processing topics
+      - principal: "User:app-processor"
+        operation: ALL
+        resource_type: topic
+        resource_pattern: "processing_"
+        pattern_type: PREFIXED
+
+      - principal: "User:app-processor"
+        operation: READ
+        resource_type: topic
+        resource_pattern: "ingest_"
+        pattern_type: PREFIXED
+
+      - principal: "User:app-processor"
+        operation: READ
+        resource_type: group
+        resource_pattern: "processor-"
+        pattern_type: PREFIXED
+
+      # app-consumer: consume from output topics
+      - principal: "User:app-consumer"
+        operation: READ
+        resource_type: topic
+        resource_pattern: "output_"
+        pattern_type: PREFIXED
+
+      - principal: "User:app-consumer"
+        operation: DESCRIBE
+        resource_type: topic
+        resource_pattern: "output_"
+        pattern_type: PREFIXED
+
+      - principal: "User:app-consumer"
+        operation: READ
+        resource_type: group
+        resource_pattern: "consumer-"
+        pattern_type: PREFIXED
+
+      # metrics-reader: consume metrics topics
+      - principal: "User:metrics-reader"
+        operation: READ
+        resource_type: topic
+        resource_pattern: "metrics_"
+        pattern_type: PREFIXED
+
+      - principal: "User:metrics-reader"
+        operation: DESCRIBE
+        resource_type: topic
+        resource_pattern: "metrics_"
+        pattern_type: PREFIXED
+
+      - principal: "User:metrics-reader"
+        operation: READ
+        resource_type: group
+        resource_pattern: "metrics-"
+        pattern_type: PREFIXED
+
+  tasks:
+    - name: Create Kafka ACLs
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-acls.sh
+        --bootstrap-server {{ ansible_host }}:{{ kafka_broker_client_port | default(kafka_broker_ssl_port) }}
+        --command-config {{ kafka_broker_client_config }}
+        --add
+        --allow-principal '{{ item.principal }}'
+        --operation {{ item.operation }}
+        --{{ item.resource_type }} '{{ item.resource_pattern }}'
+        --resource-pattern-type {{ item.pattern_type }}
+      become: true
+      become_user: "{{ kafka_user }}"
+      loop: "{{ kafka_acls }}"
+      loop_control:
+        label: "{{ item.principal }} {{ item.operation }} on {{ item.resource_type }}:{{ item.resource_pattern }}"
+      changed_when: false
+  tags: [acls]

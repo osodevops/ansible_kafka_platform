@@ -1,0 +1,66 @@
+# Kafka alerting rules — managed by Ansible
+groups:
+  - name: kafka_alerts
+    rules:
+      - alert: KafkaUnderReplicatedPartitions
+        expr: kafka_server_under_replicated_partitions > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Under-replicated partitions on {{ '{{ $labels.instance }}' }}"
+          description: "{{ '{{ $labels.instance }}' }} has {{ '{{ $value }}' }} under-replicated partitions."
+
+      - alert: KafkaOfflinePartitions
+        expr: kafka_controller_offlinepartitionscount > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Offline partitions detected"
+          description: "{{ '{{ $value }}' }} offline partitions in the cluster."
+
+      - alert: KafkaActiveControllerCount
+        expr: sum(kafka_controller_activecontrollercount) != 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Active controller count is not 1"
+          description: "Expected exactly 1 active controller, got {{ '{{ $value }}' }}."
+
+      - alert: KafkaBrokerDown
+        expr: up{job="kafka"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka node down: {{ '{{ $labels.instance }}' }}"
+          description: "JMX exporter on {{ '{{ $labels.instance }}' }} is unreachable."
+
+      - alert: KafkaISRShrinkRate
+        expr: rate(kafka_server_isr_shrink_total[5m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ISR shrinking on {{ '{{ $labels.instance }}' }}"
+          description: "ISR shrink rate is {{ '{{ $value }}' }} on {{ '{{ $labels.instance }}' }}."
+
+      - alert: KafkaHighRequestLatency
+        expr: kafka_network_request_total_time_ms{aggregate="Mean", request="Produce"} > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High produce request latency on {{ '{{ $labels.instance }}' }}"
+          description: "Mean produce latency is {{ '{{ $value }}' }}ms."
+
+      - alert: KafkaHighGCTime
+        expr: rate(jvm_gc_collection_time_ms[5m]) > 500
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High GC time on {{ '{{ $labels.instance }}' }}"
+          description: "GC collection time rate is {{ '{{ $value }}' }}ms/s for {{ '{{ $labels.gc }}' }}."

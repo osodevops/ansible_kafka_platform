@@ -1,0 +1,21 @@
+---
+- name: Check if broker log directory is already formatted
+  ansible.builtin.stat:
+    path: "{{ kafka_broker_log_dirs.split(',')[0] }}/meta.properties"
+  register: broker_formatted
+
+- name: Get cluster UUID from controller
+  ansible.builtin.set_fact:
+    kafka_cluster_uuid: "{{ hostvars[groups['kafka_controller'][0]]['kafka_cluster_uuid'] }}"
+  when:
+    - not broker_formatted.stat.exists
+    - kafka_cluster_uuid is not defined
+
+- name: Format KRaft broker storage
+  ansible.builtin.command: >
+    {{ kafka_current_dir }}/bin/kafka-storage.sh format
+    --config {{ kafka_broker_config_file }}
+    --cluster-id {{ kafka_cluster_uuid }}
+  become: true
+  become_user: "{{ kafka_user }}"
+  when: not broker_formatted.stat.exists

@@ -1,0 +1,17 @@
+---
+- name: Verify Java 21 installation
+  ansible.builtin.command: "{{ java_home }}/bin/java -version"
+  register: java_version_check
+  changed_when: false
+
+- name: Display Java version
+  ansible.builtin.debug:
+    msg: "{{ java_version_check.stderr_lines[0] }}"
+
+- name: Set JAVA_HOME in /etc/environment
+  ansible.builtin.lineinfile:
+    path: /etc/environment
+    regexp: '^JAVA_HOME='
+    line: 'JAVA_HOME={{ java_home }}'
+    create: true
+    mode: "0644"

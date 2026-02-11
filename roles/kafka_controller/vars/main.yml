@@ -1,0 +1,7 @@
+---
+# Internal variables for kafka_controller role
+kafka_service_name: "kafka"
+kafka_controller_config_file: "{{ kafka_config_dir }}/server.properties"
+kafka_controller_client_config: "{{ kafka_config_dir }}/client.properties"
+kafka_controller_log4j_config: "{{ kafka_config_dir }}/log4j2.properties"
+kafka_controller_jmx_config: "{{ kafka_monitoring_dir }}/jmx-exporter.yml"

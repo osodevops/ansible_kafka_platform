@@ -1,0 +1,7 @@
+[Service]
+Environment="JAVA_HOME={{ java_home }}"
+Environment="KAFKA_HEAP_OPTS={{ kafka_heap_opts }}"
+Environment="KAFKA_JVM_PERFORMANCE_OPTS=-server -XX:+UseG1GC -XX:MaxGCPauseMillis={{ kafka_gc_max_pause_millis }} -XX:InitiatingHeapOccupancyPercent={{ kafka_gc_initiating_heap_occupancy_percent }} -XX:G1HeapRegionSize={{ kafka_gc_heap_region_size }} -XX:+ExplicitGCInvokesConcurrent -XX:+ParallelRefProcEnabled -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath={{ kafka_log_dir }}"
+Environment="KAFKA_LOG4J_OPTS=-Dlog4j2.configurationFile=file:{{ kafka_config_dir }}/log4j2.properties"
+Environment="KAFKA_OPTS=-javaagent:{{ kafka_monitoring_dir }}/{{ jmx_exporter_jar }}={{ jmx_exporter_port }}:{{ kafka_monitoring_dir }}/jmx-exporter.yml"
+Environment="KAFKA_GC_LOG_OPTS=-Xlog:gc*:file={{ kafka_log_dir }}/gc.log:time,tags:filecount=10,filesize=100M"

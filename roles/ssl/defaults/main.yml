@@ -1,0 +1,7 @@
+---
+# SSL role defaults
+ssl_ca_dir: "{{ kafka_ssl_dir }}/ca"
+ssl_ca_key: "{{ ssl_ca_dir }}/ca-key.pem"
+ssl_ca_cert: "{{ ssl_ca_dir }}/ca-cert.pem"
+ssl_keystore_type: "PKCS12"
+ssl_truststore_file: "{{ kafka_ssl_dir }}/kafka.truststore.p12"

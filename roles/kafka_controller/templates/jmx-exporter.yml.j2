@@ -1,0 +1,47 @@
+# JMX Exporter configuration for Kafka Controller — managed by Ansible
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+
+rules:
+  # KRaft Controller Metrics
+  - pattern: "kafka.controller<type=KafkaController, name=(.+)><>Value"
+    name: "kafka_controller_$1"
+    type: GAUGE
+
+  - pattern: "kafka.controller<type=ControllerChannelManager, name=(.+)><>Value"
+    name: "kafka_controller_channel_$1"
+    type: GAUGE
+
+  # KRaft Quorum Metrics
+  - pattern: "kafka.server<type=raft-metrics><>(.+)"
+    name: "kafka_raft_$1"
+    type: GAUGE
+
+  # Request Metrics
+  - pattern: "kafka.network<type=RequestMetrics, name=(.+), request=(.+)><>(.+)"
+    name: "kafka_network_request_$1"
+    type: GAUGE
+    labels:
+      request: "$2"
+      attribute: "$3"
+
+  # JVM Metrics
+  - pattern: "java.lang<type=Memory><HeapMemoryUsage>(.+)"
+    name: "jvm_heap_memory_$1"
+    type: GAUGE
+
+  - pattern: "java.lang<type=GarbageCollector, name=(.+)><>CollectionCount"
+    name: "jvm_gc_collection_count"
+    type: COUNTER
+    labels:
+      gc: "$1"
+
+  - pattern: "java.lang<type=GarbageCollector, name=(.+)><>CollectionTime"
+    name: "jvm_gc_collection_time_ms"
+    type: COUNTER
+    labels:
+      gc: "$1"
+
+  - pattern: "java.lang<type=Threading><>ThreadCount"
+    name: "jvm_thread_count"
+    type: GAUGE

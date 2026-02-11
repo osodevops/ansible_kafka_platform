@@ -1,0 +1,8 @@
+---
+- name: Create Kafka topics
+  ansible.builtin.include_tasks: create_topic.yml
+  loop: "{{ kafka_topics }}"
+  loop_control:
+    loop_var: topic
+    label: "{{ topic.name }}"
+  run_once: true

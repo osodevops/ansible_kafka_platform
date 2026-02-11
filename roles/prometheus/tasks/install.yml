@@ -1,0 +1,108 @@
+---
+- name: Create prometheus group
+  ansible.builtin.group:
+    name: "{{ prometheus_group }}"
+    system: true
+    state: present
+
+- name: Create prometheus user
+  ansible.builtin.user:
+    name: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+    state: present
+
+- name: Create Prometheus directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: "0755"
+  loop:
+    - "{{ prometheus_config_dir }}"
+    - "{{ prometheus_config_dir }}/rules"
+    - "{{ prometheus_data_dir }}"
+
+- name: Format data disk
+  community.general.filesystem:
+    dev: "{{ monitoring_data_device }}"
+    fstype: xfs
+    force: false
+  when: not (molecule_skip_storage | default(false))
+
+- name: Mount data disk
+  ansible.posix.mount:
+    path: "{{ prometheus_data_dir }}"
+    src: "{{ monitoring_data_device }}"
+    fstype: xfs
+    opts: "{{ monitoring_data_mount_opts }}"
+    state: mounted
+  when: not (molecule_skip_storage | default(false))
+
+- name: Set data dir ownership
+  ansible.builtin.file:
+    path: "{{ prometheus_data_dir }}"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: "0755"
+    state: directory
+
+- name: Format and mount reserve disks
+  block:
+    - name: Format reserve disks
+      community.general.filesystem:
+        dev: "{{ item.device }}"
+        fstype: xfs
+        force: false
+      loop: "{{ monitoring_reserve_devices }}"
+
+    - name: Create reserve mount points
+      ansible.builtin.file:
+        path: "{{ item.mount }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ monitoring_reserve_devices }}"
+
+    - name: Mount reserve disks
+      ansible.posix.mount:
+        path: "{{ item.mount }}"
+        src: "{{ item.device }}"
+        fstype: xfs
+        opts: "{{ monitoring_data_mount_opts }}"
+        state: mounted
+      loop: "{{ monitoring_reserve_devices }}"
+  when: not (molecule_skip_storage | default(false))
+
+- name: Check if Prometheus is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/prometheus
+  register: prometheus_binary
+
+- name: Download Prometheus
+  ansible.builtin.get_url:
+    url: "{{ prometheus_binary_url }}"
+    dest: /tmp/prometheus.tar.gz
+    mode: "0644"
+  when: not prometheus_binary.stat.exists
+
+- name: Extract Prometheus
+  ansible.builtin.unarchive:
+    src: /tmp/prometheus.tar.gz
+    dest: /tmp/
+    remote_src: true
+  when: not prometheus_binary.stat.exists
+
+- name: Install Prometheus binaries
+  ansible.builtin.shell: |
+    cp /tmp/prometheus-*/prometheus /usr/local/bin/
+    cp /tmp/prometheus-*/promtool /usr/local/bin/
+    chown {{ prometheus_user }}:{{ prometheus_group }} /usr/local/bin/prometheus /usr/local/bin/promtool
+  when: not prometheus_binary.stat.exists
+
+- name: Clean up download
+  ansible.builtin.file:
+    path: /tmp/prometheus.tar.gz
+    state: absent

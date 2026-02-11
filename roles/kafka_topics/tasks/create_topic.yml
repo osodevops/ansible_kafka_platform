@@ -1,0 +1,26 @@
+---
+- name: "Check if topic {{ topic.name }} exists"
+  ansible.builtin.command: >
+    {{ kafka_current_dir }}/bin/kafka-topics.sh
+    --bootstrap-server {{ kafka_topics_bootstrap_server }}
+    --command-config {{ kafka_topics_client_config }}
+    --describe --topic {{ topic.name }}
+  become: true
+  become_user: "{{ kafka_user }}"
+  register: topic_check
+  failed_when: false
+  changed_when: false
+
+- name: "Create topic {{ topic.name }}"
+  ansible.builtin.command: >
+    {{ kafka_current_dir }}/bin/kafka-topics.sh
+    --bootstrap-server {{ kafka_topics_bootstrap_server }}
+    --command-config {{ kafka_topics_client_config }}
+    --create
+    --topic {{ topic.name }}
+    --partitions {{ topic.partitions | default(kafka_num_partitions) }}
+    --replication-factor {{ topic.replication_factor | default(kafka_default_replication_factor) }}
+    {% if topic.config is defined %}{% for key, value in topic.config.items() %}--config {{ key }}={{ value }} {% endfor %}{% endif %}
+  become: true
+  become_user: "{{ kafka_user }}"
+  when: topic_check.rc != 0

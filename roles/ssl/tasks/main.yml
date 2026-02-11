@@ -1,0 +1,12 @@
+---
+- name: Include CA generation tasks
+  ansible.builtin.include_tasks: ca.yml
+  tags: [ssl, ca]
+
+- name: Include keystore generation tasks
+  ansible.builtin.include_tasks: keystore.yml
+  tags: [ssl, keystore]
+
+- name: Include truststore generation tasks
+  ansible.builtin.include_tasks: truststore.yml
+  tags: [ssl, truststore]

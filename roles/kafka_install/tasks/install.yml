@@ -1,0 +1,36 @@
+---
+- name: Create Kafka base directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0755"
+  loop:
+    - "{{ kafka_base_dir }}"
+    - "{{ kafka_base_dir }}/versions"
+    - "{{ kafka_config_dir }}"
+    - "{{ kafka_ssl_dir }}"
+    - "{{ kafka_monitoring_dir }}"
+
+- name: Extract Kafka tarball
+  ansible.builtin.unarchive:
+    src: "{{ kafka_download_dest }}"
+    dest: "{{ kafka_base_dir }}/versions/"
+    remote_src: true
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    creates: "{{ kafka_install_dir }}"
+
+- name: Create/update current symlink
+  ansible.builtin.file:
+    src: "{{ kafka_install_dir }}"
+    dest: "{{ kafka_current_dir }}"
+    state: link
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+
+- name: Clean up downloaded tarball
+  ansible.builtin.file:
+    path: "{{ kafka_download_dest }}"
+    state: absent

@@ -1,0 +1,19 @@
+---
+- name: Include controller configuration tasks
+  ansible.builtin.include_tasks: configure.yml
+  tags: [kafka_controller, configure]
+
+- name: Include systemd tasks
+  ansible.builtin.include_tasks: systemd.yml
+  tags: [kafka_controller, systemd]
+
+- name: Include storage format tasks
+  ansible.builtin.include_tasks: format_storage.yml
+  tags: [kafka_controller, format]
+
+- name: Flush handlers to ensure service is started
+  ansible.builtin.meta: flush_handlers
+
+- name: Include health check tasks
+  ansible.builtin.include_tasks: health_check.yml
+  tags: [kafka_controller, health]

@@ -1,0 +1,4 @@
+---
+# kafka_install role defaults
+kafka_download_dest: "/tmp/{{ kafka_package }}.tgz"
+kafka_force_download: false

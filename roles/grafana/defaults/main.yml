@@ -1,0 +1,8 @@
+---
+# Grafana role defaults
+grafana_user: "grafana"
+grafana_group: "grafana"
+grafana_config_dir: "/etc/grafana"
+grafana_provisioning_dir: "/etc/grafana/provisioning"
+grafana_apt_key_url: "https://apt.grafana.com/gpg.key"
+grafana_apt_repo: "deb https://apt.grafana.com stable main"

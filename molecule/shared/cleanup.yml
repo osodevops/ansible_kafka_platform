@@ -1,0 +1,44 @@
+---
+- name: Cleanup molecule test artifacts
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Stop kafka service if running
+      ansible.builtin.systemd:
+        name: kafka
+        state: stopped
+      failed_when: false
+      when: "'kafka' in group_names"
+
+    - name: Stop prometheus service if running
+      ansible.builtin.systemd:
+        name: prometheus
+        state: stopped
+      failed_when: false
+      when: "'monitoring' in group_names"
+
+    - name: Stop grafana service if running
+      ansible.builtin.systemd:
+        name: grafana-server
+        state: stopped
+      failed_when: false
+      when: "'monitoring' in group_names"
+
+    - name: Remove Kafka data directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /data/kafka
+        - /opt/kafka
+      failed_when: false
+
+    - name: Remove monitoring data directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /data/prometheus
+        - /data/grafana
+      failed_when: false
+      when: "'monitoring' in group_names"

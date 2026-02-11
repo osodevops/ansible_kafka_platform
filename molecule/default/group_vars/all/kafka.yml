@@ -1,0 +1,30 @@
+---
+# =============================================================================
+# Molecule Default Scenario — Shared Kafka Configuration
+# =============================================================================
+
+# --- Replication (single-node friendly) ---
+kafka_default_replication_factor: 1
+kafka_min_insync_replicas: 1
+kafka_num_partitions: 1
+kafka_auto_create_topics_enable: false
+kafka_unclean_leader_election_enable: false
+
+# --- Log Retention ---
+kafka_log_retention_hours: 1
+kafka_log_segment_bytes: 1073741824
+kafka_log_retention_check_interval_ms: 60000
+
+# --- Threading (minimal for Docker) ---
+kafka_num_network_threads: 2
+kafka_num_io_threads: 4
+kafka_num_replica_fetchers: 1
+
+# --- Socket ---
+kafka_socket_send_buffer_bytes: 102400
+kafka_socket_receive_buffer_bytes: 102400
+kafka_socket_request_max_bytes: 104857600
+
+# --- Authorization (permissive for basic test) ---
+kafka_authorizer_class: "org.apache.kafka.metadata.authorizer.StandardAuthorizer"
+kafka_allow_everyone_if_no_acl_found: true

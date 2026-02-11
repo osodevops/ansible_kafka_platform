@@ -1,0 +1,32 @@
+---
+- name: Wait for controller to be listening on port {{ kafka_controller_port }}
+  ansible.builtin.wait_for:
+    port: "{{ kafka_controller_port }}"
+    host: "{{ kafka_health_check_address }}"
+    timeout: "{{ kafka_controller_port_timeout }}"
+
+- name: Wait for JMX exporter port
+  ansible.builtin.wait_for:
+    port: "{{ jmx_exporter_port }}"
+    host: "{{ kafka_health_check_address }}"
+    timeout: "{{ kafka_controller_port_timeout }}"
+
+- name: Check KRaft quorum status
+  ansible.builtin.command: >
+    {{ kafka_current_dir }}/bin/kafka-metadata-quorum.sh
+    --bootstrap-controller {{ kafka_controller_quorum_bootstrap_servers }}
+    --command-config {{ kafka_controller_client_config }}
+    describe --replication
+  become: true
+  become_user: "{{ kafka_user }}"
+  register: quorum_status
+  retries: "{{ kafka_controller_health_check_retries }}"
+  delay: "{{ kafka_controller_health_check_delay }}"
+  until: quorum_status.rc == 0
+  changed_when: false
+  run_once: true
+
+- name: Display quorum status
+  ansible.builtin.debug:
+    msg: "{{ quorum_status.stdout_lines }}"
+  run_once: true

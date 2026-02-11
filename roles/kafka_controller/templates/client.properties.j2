@@ -1,0 +1,13 @@
+# Kafka client properties for CLI tools — managed by Ansible
+{% if kafka_ssl_enabled | default(true) %}
+security.protocol=SSL
+ssl.keystore.location={{ kafka_ssl_dir }}/{{ inventory_hostname }}.keystore.p12
+ssl.keystore.password={{ ssl_keystore_password }}
+ssl.keystore.type=PKCS12
+ssl.key.password={{ ssl_key_password }}
+ssl.truststore.location={{ kafka_ssl_dir }}/kafka.truststore.p12
+ssl.truststore.password={{ ssl_truststore_password }}
+ssl.truststore.type=PKCS12
+{% else %}
+security.protocol=PLAINTEXT
+{% endif %}

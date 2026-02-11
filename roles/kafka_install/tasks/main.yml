@@ -1,0 +1,12 @@
+---
+- name: Include download tasks
+  ansible.builtin.include_tasks: download.yml
+  tags: [kafka_install, download]
+
+- name: Include install tasks
+  ansible.builtin.include_tasks: install.yml
+  tags: [kafka_install, install]
+
+- name: Include JMX exporter tasks
+  ansible.builtin.include_tasks: jmx_exporter.yml
+  tags: [kafka_install, jmx]

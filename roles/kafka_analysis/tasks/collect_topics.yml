@@ -1,0 +1,128 @@
+---
+# Per-topic collection: describe partitions + configs, parse, accumulate
+# Called in a loop with _topic_name
+
+- name: "Describe topic {{ _topic_name }}"
+  ansible.builtin.command: >
+    {{ kafka_analysis_topics_cmd }}
+    {{ _kafka_topics_conn_args }}
+    --describe --topic {{ _topic_name }}
+  become: true
+  become_user: "{{ kafka_user }}"
+  register: _topic_describe
+  changed_when: false
+  ignore_errors: true
+
+- name: "Describe configs for topic {{ _topic_name }}"
+  ansible.builtin.command: >
+    {{ kafka_analysis_configs_cmd }}
+    {{ _kafka_configs_conn_args }}
+    --describe --entity-type topics --entity-name {{ _topic_name }}
+    {{ '--all' if _kafka_configs_supports_all | default(true) | bool else '' }}
+  become: true
+  become_user: "{{ kafka_user }}"
+  register: _topic_configs_raw
+  changed_when: false
+  ignore_errors: true
+
+# --- Parse topic describe output ---
+# Header line: Topic: <name>	PartitionCount: N	ReplicationFactor: N	Configs: ...
+# Partition lines: Topic: <name>	Partition: N	Leader: N	Replicas: N,N,N	Isr: N,N,N
+
+- name: "Extract header line for {{ _topic_name }}"
+  ansible.builtin.set_fact:
+    _topic_header: "{{ _topic_describe.stdout_lines | default([]) | select('match', '^Topic:.*PartitionCount:') | first | default('') }}"
+
+- name: "Parse partition count and replication factor for {{ _topic_name }}"
+  ansible.builtin.set_fact:
+    _partition_count: "{{ _topic_header | regex_search('PartitionCount:\\s*(\\d+)', '\\1') | default(['0']) | first }}"
+    _replication_factor: "{{ _topic_header | regex_search('ReplicationFactor:\\s*(\\d+)', '\\1') | default(['0']) | first }}"
+
+- name: "Extract partition detail lines for {{ _topic_name }}"
+  ansible.builtin.set_fact:
+    _partition_lines: "{{ _topic_describe.stdout_lines | default([]) | select('match', '\\tPartition:\\s*\\d+') | list }}"
+
+- name: "Parse partition details for {{ _topic_name }}"
+  ansible.builtin.set_fact:
+    _parsed_partitions: >-
+      {{ _parsed_partitions | default([]) + [{
+        'partition': (item | regex_search('Partition:\s*(\d+)', '\1') | first | int),
+        'leader': (item | regex_search('Leader:\s*(\d+)', '\1') | first | int),
+        'replicas': (item | regex_search('Replicas:\s*([\d,]+)', '\1') | first | split(',') | map('int') | list),
+        'isr': (item | regex_search('Isr:\s*([\d,]+)', '\1') | first | split(',') | map('int') | list)
+      }] }}
+  loop: "{{ _partition_lines }}"
+  loop_control:
+    label: "partition"
+  when: _partition_lines | length > 0
+
+- name: "Default empty partitions for {{ _topic_name }}"
+  ansible.builtin.set_fact:
+    _parsed_partitions: []
+  when: _partition_lines | length == 0
+
+# --- Parse config describe output ---
+# Lines like:   retention.ms=604800000 sensitive=false synonyms={...}
+# kafka-configs --all output format:
+#   <config_name>=<value> sensitive=<bool> synonyms={<source>:<name>=<value>, ...}
+
+- name: "Parse config entries for {{ _topic_name }}"
+  ansible.builtin.set_fact:
+    _parsed_configs: >-
+      {{ _parsed_configs | default([]) + [{
+        'name': (item | regex_search('^\s*(\S+?)=', '\1') | first | default('')),
+        'value': (item | regex_search('^\s*\S+?=(\S+)\s+sensitive=', '\1') | first | default('')),
+        'sensitive': (item | regex_search('sensitive=(true|false)', '\1') | first | default('false')) == 'true',
+        'source': (item | regex_search('synonyms=\{([^}]*)\}', '\1') | first | default(''))
+      }] }}
+  loop: "{{ _topic_configs_raw.stdout_lines | default([]) | select('match', '^\\s+\\S+=') | list }}"
+  loop_control:
+    label: "config"
+  when: _topic_configs_raw.rc | default(1) == 0
+
+- name: "Default empty configs for {{ _topic_name }}"
+  ansible.builtin.set_fact:
+    _parsed_configs: []
+  when: _topic_configs_raw.rc | default(1) != 0
+
+# --- Compute health indicators ---
+
+- name: "Calculate under-replicated partitions for {{ _topic_name }}"
+  ansible.builtin.set_fact:
+    _under_replicated: >-
+      {{ _parsed_partitions | selectattr('isr', 'defined')
+         | rejectattr('isr', 'equalto', [])
+         | selectattr('replicas', 'defined')
+         | list
+         | json_query('[?length(isr) < length(replicas)]')
+         | default([])
+         | length }}
+  when: _parsed_partitions | length > 0
+
+- name: "Default under-replicated count for {{ _topic_name }}"
+  ansible.builtin.set_fact:
+    _under_replicated: 0
+  when: _parsed_partitions | length == 0
+
+# --- Accumulate into _topic_details ---
+
+- name: "Append {{ _topic_name }} to topic details"
+  ansible.builtin.set_fact:
+    _topic_details: >-
+      {{ _topic_details + [{
+        'name': _topic_name,
+        'partition_count': _partition_count | int,
+        'replication_factor': _replication_factor | int,
+        'partitions': _parsed_partitions,
+        'configs': _parsed_configs,
+        'health': {
+          'under_replicated_partitions': _under_replicated | int
+        }
+      }] }}
+
+# Reset per-iteration vars to avoid bleed between loop iterations
+- name: "Reset per-topic vars"
+  ansible.builtin.set_fact:
+    _parsed_partitions: []
+    _parsed_configs: []
+    _under_replicated: 0

@@ -1,0 +1,4 @@
+# Kafka OS tuning — managed by Ansible
+{% for key, value in kafka_sysctl_params.items() %}
+{{ key }} = {{ value }}
+{% endfor %}

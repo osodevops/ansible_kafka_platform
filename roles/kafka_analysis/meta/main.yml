@@ -1,0 +1,25 @@
+---
+galaxy_info:
+  author: OSO DevOps
+  description: Read-only Kafka topic configuration analysis and reporting
+  license: Apache-2.0
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+  galaxy_tags:
+    - kafka
+    - analysis
+    - reporting
+dependencies: []

@@ -1,0 +1,49 @@
+---
+# =============================================================================
+# Global Configuration — Kafka Cluster
+# =============================================================================
+
+# --- Connection ---
+ansible_user: kafka-admin
+ansible_become: true
+
+# --- Kafka Version ---
+# Apache Kafka version to install (must be available at downloads.apache.org)
+kafka_version: "4.0.0"
+kafka_scala_version: "2.13"
+
+# --- Kafka User/Group ---
+kafka_user: kafka
+kafka_group: kafka
+
+# --- Directory Layout ---
+kafka_base_dir: /opt/kafka
+kafka_config_dir: /etc/kafka
+kafka_log_dir: /var/log/kafka
+kafka_ssl_dir: /etc/kafka/ssl
+
+# Symlink to active Kafka installation
+kafka_current_dir: "{{ kafka_base_dir }}/current"
+
+# --- Storage ---
+# List of data directories (one per disk for JBOD)
+kafka_data_dirs:
+  - /data/kafka
+
+# Filesystem type for data volumes
+kafka_data_filesystem: xfs
+
+# --- KRaft Quorum ---
+# Controller quorum voters — must list all controllers as id@host:port
+# Update these to match your kafka_controller hosts and node_id values
+kafka_controller_quorum_voters: "1@192.0.2.11:9093,2@192.0.2.12:9093,3@192.0.2.13:9093"
+kafka_controller_quorum_bootstrap_servers: "192.0.2.11:9093,192.0.2.12:9093,192.0.2.13:9093"
+
+# --- Cluster ID ---
+# Generate with: kafka-storage.sh random-uuid
+# Must be the same across all nodes in the cluster
+kafka_cluster_id: "REPLACE_ME_WITH_KAFKA_STORAGE_RANDOM_UUID"
+
+# --- Java ---
+java_package: "openjdk-21-jre-headless"
+kafka_heap_opts: "-Xms1g -Xmx1g"

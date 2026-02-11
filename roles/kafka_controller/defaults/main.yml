@@ -1,0 +1,6 @@
+---
+# kafka_controller role defaults
+kafka_controller_health_check_retries: 15
+kafka_controller_health_check_delay: 10
+kafka_controller_port_timeout: 120
+kafka_health_check_address: "{{ ansible_host }}"

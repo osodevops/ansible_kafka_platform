@@ -1,0 +1,79 @@
+---
+- name: Template grafana.ini
+  ansible.builtin.template:
+    src: grafana.ini.j2
+    dest: "{{ grafana_config_dir }}/grafana.ini"
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: restart grafana
+
+- name: Create provisioning directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: grafana
+    mode: "0755"
+  loop:
+    - "{{ grafana_provisioning_dir }}/datasources"
+    - "{{ grafana_provisioning_dir }}/dashboards"
+    - /var/lib/grafana/dashboards
+
+- name: Copy Prometheus datasource provisioning
+  ansible.builtin.copy:
+    src: datasources/prometheus.yml
+    dest: "{{ grafana_provisioning_dir }}/datasources/prometheus.yml"
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: restart grafana
+
+- name: Copy dashboard provisioning config
+  ansible.builtin.copy:
+    content: |
+      apiVersion: 1
+      providers:
+        - name: 'kafka'
+          orgId: 1
+          folder: 'Kafka'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards
+            foldersFromFilesStructure: false
+    dest: "{{ grafana_provisioning_dir }}/dashboards/kafka.yml"
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: restart grafana
+
+- name: Copy Kafka dashboard JSON files
+  ansible.builtin.copy:
+    src: "dashboards/{{ item }}"
+    dest: "/var/lib/grafana/dashboards/{{ item }}"
+    owner: root
+    group: grafana
+    mode: "0644"
+  loop:
+    - kafka-overview.json
+    - kafka-broker.json
+    - kafka-controller.json
+    - jvm-metrics.json
+  notify: restart grafana
+
+- name: Set Grafana data directory ownership
+  ansible.builtin.file:
+    path: "{{ grafana_data_dir }}"
+    owner: grafana
+    group: grafana
+    mode: "0755"
+    state: directory
+
+- name: Enable and start Grafana
+  ansible.builtin.systemd:
+    name: grafana-server
+    enabled: true
+    state: started
+    daemon_reload: true

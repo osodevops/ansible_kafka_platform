@@ -1,0 +1,25 @@
+# Collection build artifacts
+*.tar.gz
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Molecule
+.molecule/
+
+# Ansible
+*.retry
+/tmp/ansible_facts_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

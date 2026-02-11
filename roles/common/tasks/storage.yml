@@ -1,0 +1,61 @@
+---
+- name: Determine storage mounts
+  ansible.builtin.set_fact:
+    storage_mounts: >-
+      {% if 'kafka_controller' in group_names %}{{ kafka_controller_storage_mounts }}{% elif 'kafka_broker' in group_names %}{{ kafka_broker_storage_mounts }}{% else %}[]{% endif %}
+
+- name: Create XFS filesystem on data devices
+  community.general.filesystem:
+    dev: "{{ item.device }}"
+    fstype: xfs
+    force: false
+  loop: "{{ storage_mounts }}"
+  when: storage_mounts | length > 0
+
+- name: Create mount point directories
+  ansible.builtin.file:
+    path: "{{ item.mount }}"
+    state: directory
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0750"
+  loop: "{{ storage_mounts }}"
+  when: storage_mounts | length > 0
+
+- name: Get UUID for each device
+  ansible.builtin.command: "blkid -s UUID -o value {{ item.device }}"
+  register: device_uuids
+  loop: "{{ storage_mounts }}"
+  changed_when: false
+  when: storage_mounts | length > 0
+
+- name: Mount data filesystems via UUID
+  ansible.posix.mount:
+    path: "{{ item.item.mount }}"
+    src: "UUID={{ item.stdout }}"
+    fstype: xfs
+    opts: "{{ item.item.opts }}"
+    state: mounted
+  loop: "{{ device_uuids.results }}"
+  when:
+    - storage_mounts | length > 0
+    - item.stdout is defined
+
+- name: Set ownership on mount points
+  ansible.builtin.file:
+    path: "{{ item.mount }}"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0750"
+    state: directory
+  loop: "{{ storage_mounts }}"
+  when: storage_mounts | length > 0
+
+- name: Create Kafka log directory
+  ansible.builtin.file:
+    path: "{{ kafka_log_dir }}"
+    state: directory
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: "0750"
+  when: "'kafka_controller' in group_names or 'kafka_broker' in group_names"

@@ -1,0 +1,852 @@
+---
+# =============================================================================
+# Molecule kraft-tls Scenario — Verification (~100 assertions)
+# =============================================================================
+
+# ---- Common role assertions ----
+- name: "Verify: Common role"
+  hosts: kafka
+  gather_facts: true
+  tasks:
+    - name: Check Java 21 is installed
+      ansible.builtin.command: "{{ java_home }}/bin/java -version"
+      register: java_check
+      changed_when: false
+
+    - name: Assert Java 21 is available
+      ansible.builtin.assert:
+        that:
+          - java_check.rc == 0
+          - "'21' in java_check.stderr"
+
+    - name: Check JAVA_HOME is set
+      ansible.builtin.command: grep JAVA_HOME /etc/environment
+      register: java_home_check
+      changed_when: false
+
+    - name: Assert JAVA_HOME is configured
+      ansible.builtin.assert:
+        that:
+          - "java_home in java_home_check.stdout"
+
+    - name: Assert kafka user exists
+      ansible.builtin.command: id kafka
+      register: kafka_user_check
+      changed_when: false
+
+    - name: Verify kafka user
+      ansible.builtin.assert:
+        that:
+          - kafka_user_check.rc == 0
+
+    - name: Assert kafka group exists
+      ansible.builtin.command: getent group kafka
+      register: kafka_group_check
+      changed_when: false
+
+    - name: Verify kafka group
+      ansible.builtin.assert:
+        that:
+          - kafka_group_check.rc == 0
+
+    - name: Check sysctl config
+      ansible.builtin.stat:
+        path: /etc/sysctl.d/99-kafka.conf
+      register: sysctl_stat
+
+    - name: Assert sysctl config
+      ansible.builtin.assert:
+        that:
+          - sysctl_stat.stat.exists
+
+    - name: Check limits config
+      ansible.builtin.stat:
+        path: /etc/security/limits.d/99-kafka.conf
+      register: limits_stat
+
+    - name: Assert limits config
+      ansible.builtin.assert:
+        that:
+          - limits_stat.stat.exists
+
+    - name: Check data directories
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: dir_stats
+      loop:
+        - /data/kafka
+        - "{{ kafka_log_dir }}"
+
+    - name: Assert data directories exist
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.isdir
+      loop: "{{ dir_stats.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+# ---- kafka_install assertions ----
+- name: "Verify: kafka_install role"
+  hosts: kafka
+  gather_facts: false
+  tasks:
+    - name: Check Kafka directory tree
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: kafka_dir_stats
+      loop:
+        - "{{ kafka_base_dir }}"
+        - "{{ kafka_base_dir }}/versions"
+        - "{{ kafka_config_dir }}"
+        - "{{ kafka_ssl_dir }}"
+        - "{{ kafka_monitoring_dir }}"
+
+    - name: Assert Kafka directories exist
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.isdir
+      loop: "{{ kafka_dir_stats.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Check current symlink
+      ansible.builtin.stat:
+        path: "{{ kafka_current_dir }}"
+      register: current_link
+
+    - name: Assert current symlink valid
+      ansible.builtin.assert:
+        that:
+          - current_link.stat.exists
+          - current_link.stat.islnk
+
+    - name: Check binaries are executable
+      ansible.builtin.stat:
+        path: "{{ kafka_current_dir }}/bin/{{ item }}"
+      register: binary_stats
+      loop:
+        - kafka-server-start.sh
+        - kafka-topics.sh
+        - kafka-storage.sh
+        - kafka-configs.sh
+        - kafka-metadata-quorum.sh
+
+    - name: Assert binaries are executable
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.executable
+      loop: "{{ binary_stats.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Check JMX exporter JAR
+      ansible.builtin.stat:
+        path: "{{ kafka_monitoring_dir }}/{{ jmx_exporter_jar }}"
+      register: jmx_jar
+
+    - name: Assert JMX JAR present
+      ansible.builtin.assert:
+        that:
+          - jmx_jar.stat.exists
+
+    - name: Check monitoring dir ownership
+      ansible.builtin.stat:
+        path: "{{ kafka_monitoring_dir }}"
+      register: mon_dir
+
+    - name: Assert monitoring dir owned by kafka
+      ansible.builtin.assert:
+        that:
+          - mon_dir.stat.pw_name == 'kafka'
+
+# ---- SSL assertions ----
+- name: "Verify: SSL chain"
+  hosts: kafka
+  gather_facts: false
+  tasks:
+    - name: Check CA directory
+      ansible.builtin.stat:
+        path: "{{ kafka_ssl_dir }}/ca"
+      register: ca_dir
+
+    - name: Assert CA directory exists
+      ansible.builtin.assert:
+        that:
+          - ca_dir.stat.exists
+          - ca_dir.stat.isdir
+
+    - name: Check CA certificate
+      ansible.builtin.stat:
+        path: "{{ kafka_ssl_dir }}/ca/ca-cert.pem"
+      register: ca_cert
+
+    - name: Assert CA cert exists
+      ansible.builtin.assert:
+        that:
+          - ca_cert.stat.exists
+
+    - name: Check node keystore
+      ansible.builtin.stat:
+        path: "{{ kafka_ssl_dir }}/{{ inventory_hostname }}.keystore.p12"
+      register: keystore
+
+    - name: Assert keystore exists and owned by kafka
+      ansible.builtin.assert:
+        that:
+          - keystore.stat.exists
+          - keystore.stat.pw_name == 'kafka'
+
+    - name: Check truststore
+      ansible.builtin.stat:
+        path: "{{ kafka_ssl_dir }}/kafka.truststore.p12"
+      register: truststore
+
+    - name: Assert truststore exists
+      ansible.builtin.assert:
+        that:
+          - truststore.stat.exists
+
+    - name: Verify cert CN matches hostname
+      ansible.builtin.command: >
+        keytool -list -v
+        -keystore {{ kafka_ssl_dir }}/{{ inventory_hostname }}.keystore.p12
+        -storepass {{ ssl_keystore_password }}
+        -storetype PKCS12
+      register: keystore_list
+      changed_when: false
+
+    - name: Assert cert contains hostname
+      ansible.builtin.assert:
+        that:
+          - "inventory_hostname in keystore_list.stdout"
+
+    - name: Verify keystore readable with password
+      ansible.builtin.command: >
+        keytool -list
+        -keystore {{ kafka_ssl_dir }}/{{ inventory_hostname }}.keystore.p12
+        -storepass {{ ssl_keystore_password }}
+        -storetype PKCS12
+      register: keystore_verify
+      changed_when: false
+
+    - name: Assert keystore readable
+      ansible.builtin.assert:
+        that:
+          - keystore_verify.rc == 0
+
+    - name: Verify CA cert validity
+      ansible.builtin.command: >
+        openssl x509 -in {{ kafka_ssl_dir }}/ca/ca-cert.pem -noout -dates
+      register: ca_dates
+      changed_when: false
+
+    - name: Assert CA cert is valid
+      ansible.builtin.assert:
+        that:
+          - ca_dates.rc == 0
+
+    - name: Check client.properties references correct files
+      ansible.builtin.slurp:
+        src: "{{ kafka_config_dir }}/client.properties"
+      register: client_props_b64
+
+    - name: Assert client.properties has SSL config
+      ansible.builtin.assert:
+        that:
+          - "'ssl.' in (client_props_b64.content | b64decode) or 'security.protocol' in (client_props_b64.content | b64decode)"
+
+# ---- Controller quorum assertions ----
+- name: "Verify: KRaft quorum"
+  hosts: kafka_controller
+  gather_facts: false
+  tasks:
+    - name: Check controller server.properties
+      ansible.builtin.slurp:
+        src: "{{ kafka_config_dir }}/server.properties"
+      register: ctrl_props_b64
+
+    - name: Decode controller properties
+      ansible.builtin.set_fact:
+        ctrl_props: "{{ ctrl_props_b64.content | b64decode }}"
+
+    - name: Assert controller properties
+      ansible.builtin.assert:
+        that:
+          - "'process.roles=controller' in ctrl_props"
+          - "'controller.quorum.voters=' in ctrl_props"
+          - "'CONTROLLER:SSL' in ctrl_props"
+
+    - name: Check systemd unit
+      ansible.builtin.stat:
+        path: /etc/systemd/system/kafka.service
+      register: ctrl_unit
+
+    - name: Assert systemd unit exists
+      ansible.builtin.assert:
+        that:
+          - ctrl_unit.stat.exists
+
+    - name: Check systemd override
+      ansible.builtin.slurp:
+        src: /etc/systemd/system/kafka.service.d/override.conf
+      register: ctrl_override_b64
+
+    - name: Assert override contents
+      ansible.builtin.assert:
+        that:
+          - "'JAVA_HOME' in (ctrl_override_b64.content | b64decode)"
+          - "'KAFKA_HEAP_OPTS' in (ctrl_override_b64.content | b64decode)"
+          - "'jmx_prometheus_javaagent' in (ctrl_override_b64.content | b64decode)"
+
+    - name: Check meta.properties exists
+      ansible.builtin.stat:
+        path: "{{ kafka_data_dir }}/metadata/meta.properties"
+      register: meta_props
+
+    - name: Assert meta.properties exists
+      ansible.builtin.assert:
+        that:
+          - meta_props.stat.exists
+
+    - name: Check controller service is active
+      ansible.builtin.command: systemctl is-active kafka
+      register: ctrl_active
+      changed_when: false
+
+    - name: Assert controller active
+      ansible.builtin.assert:
+        that:
+          - ctrl_active.stdout == 'active'
+
+    - name: Check controller service is enabled
+      ansible.builtin.command: systemctl is-enabled kafka
+      register: ctrl_enabled
+      changed_when: false
+
+    - name: Assert controller enabled
+      ansible.builtin.assert:
+        that:
+          - ctrl_enabled.stdout == 'enabled'
+
+    - name: Wait for controller port 9093
+      ansible.builtin.wait_for:
+        port: 9093
+        host: "0.0.0.0"
+        timeout: 60
+
+    - name: Wait for JMX port 7071
+      ansible.builtin.wait_for:
+        port: 7071
+        host: "0.0.0.0"
+        timeout: 60
+
+- name: "Verify: Quorum metadata (from first controller)"
+  hosts: kafka_controller[0]
+  gather_facts: false
+  tasks:
+    - name: Check quorum describe replication
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-metadata-quorum.sh
+        --bootstrap-controller controller-01:9093
+        --command-config {{ kafka_config_dir }}/client.properties
+        describe --replication
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: quorum_replication
+      changed_when: false
+      retries: 5
+      delay: 10
+      until: quorum_replication.rc == 0
+
+    - name: Assert quorum replication output
+      ansible.builtin.assert:
+        that:
+          - quorum_replication.rc == 0
+
+    - name: Check quorum describe status
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-metadata-quorum.sh
+        --bootstrap-controller controller-01:9093
+        --command-config {{ kafka_config_dir }}/client.properties
+        describe --status
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: quorum_status
+      changed_when: false
+      retries: 5
+      delay: 10
+      until: quorum_status.rc == 0
+
+    - name: Assert quorum has a leader
+      ansible.builtin.assert:
+        that:
+          - "'LeaderId' in quorum_status.stdout"
+
+# ---- Broker assertions ----
+- name: "Verify: kafka_broker role"
+  hosts: kafka_broker
+  gather_facts: false
+  tasks:
+    - name: Read broker server.properties
+      ansible.builtin.slurp:
+        src: "{{ kafka_config_dir }}/server.properties"
+      register: broker_props_b64
+
+    - name: Decode broker properties
+      ansible.builtin.set_fact:
+        broker_props: "{{ broker_props_b64.content | b64decode }}"
+
+    - name: Assert broker properties
+      ansible.builtin.assert:
+        that:
+          - "'process.roles=broker' in broker_props"
+          - "'log.dirs=' in broker_props"
+          - "'ssl.keystore.location=' in broker_props"
+          - "'ssl.truststore.location=' in broker_props"
+          - "'allow.everyone.if.no.acl.found=False' in broker_props"
+
+    - name: Check broker service active
+      ansible.builtin.command: systemctl is-active kafka
+      register: broker_active
+      changed_when: false
+
+    - name: Assert broker active
+      ansible.builtin.assert:
+        that:
+          - broker_active.stdout == 'active'
+
+    - name: Wait for broker SSL port 9094
+      ansible.builtin.wait_for:
+        port: 9094
+        host: "0.0.0.0"
+        timeout: 60
+
+    - name: Wait for broker SASL_SSL port 9095
+      ansible.builtin.wait_for:
+        port: 9095
+        host: "0.0.0.0"
+        timeout: 60
+
+    - name: Wait for broker JMX port 7071
+      ansible.builtin.wait_for:
+        port: 7071
+        host: "0.0.0.0"
+        timeout: 60
+
+# ---- Under-replicated partitions check ----
+- name: "Verify: Zero under-replicated partitions"
+  hosts: kafka_broker[0]
+  gather_facts: false
+  tasks:
+    - name: Check for under-replicated partitions
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-topics.sh
+        --bootstrap-server broker-01:{{ kafka_broker_ssl_port }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        --describe --under-replicated-partitions
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: urp_check
+      changed_when: false
+      retries: 10
+      delay: 10
+      until: urp_check.rc == 0
+
+    - name: Assert zero under-replicated partitions
+      ansible.builtin.assert:
+        that:
+          - urp_check.stdout == '' or urp_check.stdout_lines | length == 0
+        fail_msg: "Under-replicated partitions found: {{ urp_check.stdout }}"
+
+# ---- SCRAM assertions ----
+- name: "Verify: SCRAM users"
+  hosts: kafka_broker[0]
+  gather_facts: false
+  tasks:
+    - name: List SCRAM users
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-configs.sh
+        --bootstrap-server broker-01:{{ kafka_broker_ssl_port }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        --describe --entity-type users
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: scram_users
+      changed_when: false
+      retries: 5
+      delay: 5
+      until: scram_users.rc == 0
+
+    - name: Assert admin SCRAM user exists
+      ansible.builtin.assert:
+        that:
+          - "'admin' in scram_users.stdout"
+        fail_msg: "Admin SCRAM user not found"
+
+    - name: Assert test-producer SCRAM user exists
+      ansible.builtin.assert:
+        that:
+          - "'test-producer' in scram_users.stdout"
+        fail_msg: "test-producer SCRAM user not found"
+
+    - name: Assert SCRAM-SHA-512 mechanism configured
+      ansible.builtin.assert:
+        that:
+          - "'SCRAM-SHA-512' in scram_users.stdout"
+        fail_msg: "SCRAM-SHA-512 mechanism not found in user configs"
+
+# ---- Topic assertions ----
+- name: "Verify: Kafka topics"
+  hosts: kafka_broker[0]
+  gather_facts: false
+  tasks:
+    - name: List all topics
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-topics.sh
+        --bootstrap-server broker-01:{{ kafka_broker_ssl_port }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        --list
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: topic_list
+      changed_when: false
+      retries: 5
+      delay: 5
+      until: topic_list.rc == 0
+
+    - name: Assert molecule_test_topic_1 exists
+      ansible.builtin.assert:
+        that:
+          - "'molecule_test_topic_1' in topic_list.stdout"
+        fail_msg: "molecule_test_topic_1 not found"
+
+    - name: Assert molecule_test_topic_2 exists
+      ansible.builtin.assert:
+        that:
+          - "'molecule_test_topic_2' in topic_list.stdout"
+        fail_msg: "molecule_test_topic_2 not found"
+
+    - name: Describe topic 1
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-topics.sh
+        --bootstrap-server broker-01:{{ kafka_broker_ssl_port }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        --describe --topic molecule_test_topic_1
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: topic1_desc
+      changed_when: false
+
+    - name: Assert topic 1 has RF=2
+      ansible.builtin.assert:
+        that:
+          - "'ReplicationFactor: 2' in topic1_desc.stdout"
+        fail_msg: "molecule_test_topic_1 does not have RF=2"
+
+    - name: Assert topic 1 has correct partition count
+      ansible.builtin.assert:
+        that:
+          - "'PartitionCount: 2' in topic1_desc.stdout"
+        fail_msg: "molecule_test_topic_1 does not have 2 partitions"
+
+    - name: Describe topic 2
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-topics.sh
+        --bootstrap-server broker-01:{{ kafka_broker_ssl_port }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        --describe --topic molecule_test_topic_2
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: topic2_desc
+      changed_when: false
+
+    - name: Assert topic 2 has RF=2
+      ansible.builtin.assert:
+        that:
+          - "'ReplicationFactor: 2' in topic2_desc.stdout"
+        fail_msg: "molecule_test_topic_2 does not have RF=2"
+
+    - name: Get topic 2 configs
+      ansible.builtin.command: >
+        {{ kafka_current_dir }}/bin/kafka-configs.sh
+        --bootstrap-server broker-01:{{ kafka_broker_ssl_port }}
+        --command-config {{ kafka_config_dir }}/client.properties
+        --describe --entity-type topics --entity-name molecule_test_topic_2
+      become: true
+      become_user: "{{ kafka_user }}"
+      register: topic2_config
+      changed_when: false
+
+    - name: Assert topic 2 has compact cleanup policy
+      ansible.builtin.assert:
+        that:
+          - "'compact' in topic2_config.stdout"
+        fail_msg: "molecule_test_topic_2 does not have compact cleanup policy"
+
+# ---- JMX exporter assertions ----
+- name: "Verify: JMX exporter metrics"
+  hosts: kafka
+  gather_facts: false
+  tasks:
+    - name: Fetch JMX metrics from port 7071
+      ansible.builtin.uri:
+        url: "http://localhost:7071/metrics"
+        return_content: true
+        status_code: 200
+      register: jmx_response
+      retries: 5
+      delay: 10
+      until: jmx_response.status == 200
+
+    - name: Assert JMX metrics endpoint returns data
+      ansible.builtin.assert:
+        that:
+          - jmx_response.status == 200
+
+    - name: Assert JMX response contains JVM metrics
+      ansible.builtin.assert:
+        that:
+          - "'jvm_' in jmx_response.content"
+        fail_msg: "JMX metrics do not contain jvm_ metrics"
+
+# ---- Prometheus assertions ----
+- name: "Verify: Prometheus"
+  hosts: prometheus-01
+  gather_facts: false
+  tasks:
+    - name: Check Prometheus service active
+      ansible.builtin.command: systemctl is-active prometheus
+      register: prom_active
+      changed_when: false
+
+    - name: Assert Prometheus active
+      ansible.builtin.assert:
+        that:
+          - prom_active.stdout == 'active'
+
+    - name: Check Prometheus config
+      ansible.builtin.slurp:
+        src: /etc/prometheus/prometheus.yml
+      register: prom_config_b64
+
+    - name: Decode Prometheus config
+      ansible.builtin.set_fact:
+        prom_config: "{{ prom_config_b64.content | b64decode }}"
+
+    - name: Assert Prometheus has all 5 scrape targets
+      ansible.builtin.assert:
+        that:
+          - "'controller-01' in prom_config"
+          - "'controller-02' in prom_config"
+          - "'controller-03' in prom_config"
+          - "'broker-01' in prom_config"
+          - "'broker-02' in prom_config"
+
+    - name: Assert Prometheus has kafka job
+      ansible.builtin.assert:
+        that:
+          - "'kafka' in prom_config"
+
+    - name: Check alert rules file
+      ansible.builtin.stat:
+        path: /etc/prometheus/rules/kafka_alerts.yml
+      register: alert_rules
+
+    - name: Assert alert rules exist
+      ansible.builtin.assert:
+        that:
+          - alert_rules.stat.exists
+
+    - name: Check Prometheus health endpoint
+      ansible.builtin.uri:
+        url: "http://localhost:9090/-/healthy"
+        return_content: true
+        status_code: 200
+      register: prom_health
+      retries: 10
+      delay: 5
+      until: prom_health.status == 200
+
+    - name: Assert Prometheus healthy
+      ansible.builtin.assert:
+        that:
+          - prom_health.status == 200
+
+    - name: Check Prometheus targets API
+      ansible.builtin.uri:
+        url: "http://localhost:9090/api/v1/targets"
+        return_content: true
+        status_code: 200
+      register: prom_targets
+      retries: 5
+      delay: 5
+      until: prom_targets.status == 200
+
+    - name: Assert Prometheus targets contain kafka job
+      ansible.builtin.assert:
+        that:
+          - "'kafka' in prom_targets.content"
+        fail_msg: "Prometheus targets do not contain kafka job"
+
+# ---- Grafana assertions ----
+- name: "Verify: Grafana"
+  hosts: grafana-01
+  gather_facts: false
+  tasks:
+    - name: Check Grafana service active
+      ansible.builtin.command: systemctl is-active grafana-server
+      register: grafana_active
+      changed_when: false
+
+    - name: Assert Grafana active
+      ansible.builtin.assert:
+        that:
+          - grafana_active.stdout == 'active'
+
+    - name: Check grafana.ini exists
+      ansible.builtin.stat:
+        path: /etc/grafana/grafana.ini
+      register: grafana_ini
+
+    - name: Assert grafana.ini exists
+      ansible.builtin.assert:
+        that:
+          - grafana_ini.stat.exists
+
+    - name: Check datasource provisioned
+      ansible.builtin.stat:
+        path: /etc/grafana/provisioning/datasources/prometheus.yml
+      register: grafana_ds
+
+    - name: Assert datasource provisioned
+      ansible.builtin.assert:
+        that:
+          - grafana_ds.stat.exists
+
+    - name: Check dashboard provisioning config
+      ansible.builtin.stat:
+        path: /etc/grafana/provisioning/dashboards/kafka.yml
+      register: grafana_dash_prov
+
+    - name: Assert dashboard provisioning exists
+      ansible.builtin.assert:
+        that:
+          - grafana_dash_prov.stat.exists
+
+    - name: Check dashboard JSON files
+      ansible.builtin.stat:
+        path: "/var/lib/grafana/dashboards/{{ item }}"
+      register: dash_stats
+      loop:
+        - kafka-overview.json
+        - kafka-broker.json
+        - kafka-controller.json
+        - jvm-metrics.json
+
+    - name: Assert all dashboard files exist
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+      loop: "{{ dash_stats.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Check Grafana health API
+      ansible.builtin.uri:
+        url: "http://localhost:3000/api/health"
+        return_content: true
+        status_code: 200
+      register: grafana_health
+      retries: 10
+      delay: 5
+      until: grafana_health.status == 200
+
+    - name: Assert Grafana healthy
+      ansible.builtin.assert:
+        that:
+          - grafana_health.status == 200
+
+    - name: Check Grafana datasources API
+      ansible.builtin.uri:
+        url: "http://localhost:3000/api/datasources"
+        return_content: true
+        status_code: 200
+        user: admin
+        password: "molecule-grafana-admin"
+        force_basic_auth: true
+      register: grafana_datasources
+      retries: 5
+      delay: 5
+      until: grafana_datasources.status == 200
+
+    - name: Assert Prometheus datasource configured
+      ansible.builtin.assert:
+        that:
+          - "'Prometheus' in grafana_datasources.content"
+        fail_msg: "Prometheus datasource not found in Grafana"
+
+    - name: Check Grafana dashboards via search API
+      ansible.builtin.uri:
+        url: "http://localhost:3000/api/search"
+        return_content: true
+        status_code: 200
+        user: admin
+        password: "molecule-grafana-admin"
+        force_basic_auth: true
+      register: grafana_search
+      retries: 5
+      delay: 5
+      until: grafana_search.status == 200
+
+    - name: Assert Grafana has dashboards
+      ansible.builtin.assert:
+        that:
+          - grafana_search.json | length > 0
+        fail_msg: "No dashboards found in Grafana"
+
+# ---- Kafka UI assertions ----
+- name: "Verify: Kafka UI"
+  hosts: grafana-01
+  gather_facts: false
+  tasks:
+    - name: Check Kafka UI systemd unit exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/kafka-ui.service
+      register: kafka_ui_service_stat
+
+    - name: Assert Kafka UI systemd unit exists
+      ansible.builtin.assert:
+        that:
+          - kafka_ui_service_stat.stat.exists
+        fail_msg: "Kafka UI systemd unit not found"
+
+    - name: Check Kafka UI config exists
+      ansible.builtin.stat:
+        path: /etc/kafka-ui/application.yml
+      register: kafka_ui_config_stat
+
+    - name: Assert Kafka UI config exists
+      ansible.builtin.assert:
+        that:
+          - kafka_ui_config_stat.stat.exists
+        fail_msg: "Kafka UI configuration not found"
+
+    - name: Check kafka-ui service is active
+      ansible.builtin.command: systemctl is-active kafka-ui
+      register: kafka_ui_active
+      changed_when: false
+
+    - name: Assert Kafka UI service is active
+      ansible.builtin.assert:
+        that:
+          - kafka_ui_active.stdout == 'active'
+        fail_msg: "Kafka UI service is not active"
+
+    - name: Wait for Kafka UI port 8080
+      ansible.builtin.wait_for:
+        port: "{{ kafka_ui_port }}"
+        host: "0.0.0.0"
+        timeout: 60

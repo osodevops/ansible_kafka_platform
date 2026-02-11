@@ -1,0 +1,54 @@
+---
+# =============================================================================
+# Molecule Default — Broker Group Configuration
+# =============================================================================
+
+kafka_process_roles: "broker"
+
+# --- Broker Listeners ---
+kafka_broker_listeners: "PLAINTEXT://:{{ kafka_broker_plaintext_port }}"
+kafka_broker_advertised_listeners: "PLAINTEXT://{{ inventory_hostname }}:{{ kafka_broker_plaintext_port }}"
+kafka_broker_inter_broker_listener: "PLAINTEXT"
+
+# --- Client port for CLI tools ---
+kafka_broker_client_port: "{{ kafka_broker_plaintext_port }}"
+
+# --- Single log.dir for Docker ---
+kafka_broker_log_dirs: "{{ kafka_data_dir }}/logs"
+
+# --- Broker-specific server.properties ---
+kafka_broker_properties:
+  process.roles: "broker"
+  listeners: "{{ kafka_broker_listeners }}"
+  advertised.listeners: "{{ kafka_broker_advertised_listeners }}"
+  inter.broker.listener.name: "{{ kafka_broker_inter_broker_listener }}"
+  listener.security.protocol.map: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+  controller.listener.names: "CONTROLLER"
+  controller.quorum.voters: "{{ kafka_controller_quorum_voters }}"
+  controller.quorum.bootstrap.servers: "{{ kafka_controller_quorum_bootstrap_servers }}"
+  log.dirs: "{{ kafka_broker_log_dirs }}"
+  # Replication & Durability
+  default.replication.factor: "{{ kafka_default_replication_factor }}"
+  min.insync.replicas: "{{ kafka_min_insync_replicas }}"
+  num.partitions: "{{ kafka_num_partitions }}"
+  auto.create.topics.enable: "{{ kafka_auto_create_topics_enable }}"
+  unclean.leader.election.enable: "{{ kafka_unclean_leader_election_enable }}"
+  # Log Retention
+  log.retention.hours: "{{ kafka_log_retention_hours }}"
+  log.segment.bytes: "{{ kafka_log_segment_bytes }}"
+  log.retention.check.interval.ms: "{{ kafka_log_retention_check_interval_ms }}"
+  # Threading
+  num.network.threads: "{{ kafka_num_network_threads }}"
+  num.io.threads: "{{ kafka_num_io_threads }}"
+  num.replica.fetchers: "{{ kafka_num_replica_fetchers }}"
+  # Socket
+  socket.send.buffer.bytes: "{{ kafka_socket_send_buffer_bytes }}"
+  socket.receive.buffer.bytes: "{{ kafka_socket_receive_buffer_bytes }}"
+  socket.request.max.bytes: "{{ kafka_socket_request_max_bytes }}"
+  # Authorizer
+  authorizer.class.name: "{{ kafka_authorizer_class }}"
+  allow.everyone.if.no.acl.found: "{{ kafka_allow_everyone_if_no_acl_found }}"
+  super.users: "{{ kafka_super_users | join(';') }}"
+
+# --- Storage: empty for Docker ---
+kafka_broker_storage_mounts: []

@@ -1,0 +1,89 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Partitions",
+      "type": "stat",
+      "targets": [{ "expr": "kafka_server_partition_count{instance=~\"$instance\"}", "legendFormat": "" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "id": 2,
+      "title": "Under-Replicated",
+      "type": "stat",
+      "targets": [{ "expr": "kafka_server_under_replicated_partitions{instance=~\"$instance\"}", "legendFormat": "" }]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "id": 3,
+      "title": "Bytes In/Out",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(kafka_server_broker_topic_metrics_bytesinpersec_total{instance=~\"$instance\"}[5m])", "legendFormat": "Bytes In" },
+        { "expr": "rate(kafka_server_broker_topic_metrics_bytesoutpersec_total{instance=~\"$instance\"}[5m])", "legendFormat": "Bytes Out" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "id": 4,
+      "title": "Request Rate",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "rate(kafka_network_requests_per_sec_total{instance=~\"$instance\", request=\"Produce\"}[5m])", "legendFormat": "Produce" },
+        { "expr": "rate(kafka_network_requests_per_sec_total{instance=~\"$instance\", request=\"FetchConsumer\"}[5m])", "legendFormat": "FetchConsumer" },
+        { "expr": "rate(kafka_network_requests_per_sec_total{instance=~\"$instance\", request=\"FetchFollower\"}[5m])", "legendFormat": "FetchFollower" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "id": 5,
+      "title": "Request Latency (ms)",
+      "type": "timeseries",
+      "targets": [
+        { "expr": "kafka_network_request_total_time_ms{instance=~\"$instance\", request=\"Produce\", aggregate=\"Mean\"}", "legendFormat": "Produce Mean" },
+        { "expr": "kafka_network_request_total_time_ms{instance=~\"$instance\", request=\"FetchConsumer\", aggregate=\"Mean\"}", "legendFormat": "FetchConsumer Mean" }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "id": 6,
+      "title": "Log Flush Rate",
+      "type": "timeseries",
+      "targets": [{ "expr": "rate(kafka_log_flush_total{instance=~\"$instance\"}[5m])", "legendFormat": "Flush/s" }]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["kafka", "broker"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "Prometheus", "value": "Prometheus" },
+        "name": "datasource",
+        "query": "prometheus",
+        "type": "datasource"
+      },
+      {
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "definition": "label_values(kafka_server_partition_count, instance)",
+        "name": "instance",
+        "query": "label_values(kafka_server_partition_count, instance)",
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "title": "Kafka Broker Detail",
+  "uid": "kafka-broker"
+}

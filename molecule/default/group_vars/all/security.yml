@@ -1,0 +1,24 @@
+---
+# =============================================================================
+# Molecule Default Scenario — Security / SSL Test Passwords
+# =============================================================================
+
+# --- TLS / SSL ---
+ssl_ca_password: "molecule-ca-password"
+ssl_keystore_password: "molecule-keystore-password"
+ssl_truststore_password: "molecule-truststore-password"
+ssl_key_password: "molecule-keystore-password"
+
+# --- CA Certificate Settings ---
+ssl_ca_common_name: "Molecule Test CA"
+ssl_ca_organization: "Molecule Test"
+ssl_ca_validity_days: 365
+ssl_cert_validity_days: 365
+
+# --- SCRAM-SHA-512 Users ---
+kafka_scram_users: []
+
+# --- Super Users ---
+kafka_super_users:
+  - "User:admin"
+  - "User:ANONYMOUS"

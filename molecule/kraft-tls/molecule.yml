@@ -1,0 +1,166 @@
+---
+dependency:
+  name: galaxy
+scenario:
+  name: kraft-tls
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - verify
+    - cleanup
+    - destroy
+driver:
+  name: docker
+platforms:
+  - name: controller-01
+    image: geerlingguy/docker-ubuntu2404-ansible:latest
+    command: ""
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+    groups:
+      - kafka_controller
+      - kafka
+    docker_networks:
+      - name: molecule-kafka-tls
+    networks:
+      - name: molecule-kafka-tls
+
+  - name: controller-02
+    image: geerlingguy/docker-ubuntu2404-ansible:latest
+    command: ""
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+    groups:
+      - kafka_controller
+      - kafka
+    docker_networks:
+      - name: molecule-kafka-tls
+    networks:
+      - name: molecule-kafka-tls
+
+  - name: controller-03
+    image: geerlingguy/docker-ubuntu2404-ansible:latest
+    command: ""
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+    groups:
+      - kafka_controller
+      - kafka
+    docker_networks:
+      - name: molecule-kafka-tls
+    networks:
+      - name: molecule-kafka-tls
+
+  - name: broker-01
+    image: geerlingguy/docker-ubuntu2404-ansible:latest
+    command: ""
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+    groups:
+      - kafka_broker
+      - kafka
+    docker_networks:
+      - name: molecule-kafka-tls
+    networks:
+      - name: molecule-kafka-tls
+
+  - name: broker-02
+    image: geerlingguy/docker-ubuntu2404-ansible:latest
+    command: ""
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+    groups:
+      - kafka_broker
+      - kafka
+    docker_networks:
+      - name: molecule-kafka-tls
+    networks:
+      - name: molecule-kafka-tls
+
+  - name: prometheus-01
+    image: geerlingguy/docker-ubuntu2404-ansible:latest
+    command: ""
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+    groups:
+      - monitoring
+    docker_networks:
+      - name: molecule-kafka-tls
+    networks:
+      - name: molecule-kafka-tls
+
+  - name: grafana-01
+    image: geerlingguy/docker-ubuntu2404-ansible:latest
+    command: ""
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    tmpfs:
+      - /run
+      - /tmp
+    groups:
+      - monitoring
+    docker_networks:
+      - name: molecule-kafka-tls
+    networks:
+      - name: molecule-kafka-tls
+
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_ROLES_PATH: "${MOLECULE_PROJECT_DIRECTORY}/roles"
+  inventory:
+    links:
+      group_vars: group_vars
+      host_vars: host_vars
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: jsonfile
+      fact_caching_connection: /tmp/molecule_facts_cache
+      fact_caching_timeout: 3600
+verifier:
+  name: ansible
