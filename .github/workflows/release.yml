@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,11 +44,12 @@ jobs:
         id: version
         run: |
           if [ -n "${{ github.event.inputs.version }}" ]; then
-            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+            VERSION="${{ github.event.inputs.version }}"
           else
-            TAG="${GITHUB_REF#refs/tags/v}"
-            echo "version=${TAG}" >> "$GITHUB_OUTPUT"
+            VERSION="${GITHUB_REF#refs/tags/v}"
           fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Verify galaxy.yml version
         run: |
@@ -106,12 +108,12 @@ jobs:
       GALAXY_TOKEN: ${{ secrets.GALAXY_API_KEY }}
     steps:
       - name: Check for Galaxy token
+        id: check
         run: |
           if [ -z "$GALAXY_TOKEN" ]; then
-            echo "::warning::GALAXY_TOKEN secret not set — skipping Galaxy publish"
+            echo "::warning::GALAXY_API_KEY secret not set — skipping Galaxy publish"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
-        id: check
 
       - name: Download build artifact
         if: steps.check.outputs.skip != 'true'
@@ -141,20 +143,43 @@ jobs:
     name: Create GitHub Release
     runs-on: ubuntu-latest
     needs: [validate, build]
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: collection-tarball
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: osodevops-kafka_platform-${{ needs.validate.outputs.version }}.tar.gz
-          generate_release_notes: true
-          body: |
-            ## Installation
+      - name: Create or update GitHub Release
+        run: |
+          TAG="${{ needs.validate.outputs.tag }}"
+          VERSION="${{ needs.validate.outputs.version }}"
+          TARBALL="osodevops-kafka_platform-${VERSION}.tar.gz"
 
-            ```bash
-            ansible-galaxy collection install osodevops.kafka_platform:${{ needs.validate.outputs.version }}
-            ```
+          cat > "$RUNNER_TEMP/notes.md" <<'NOTES'
+          ## Installation
+
+          ```bash
+          ansible-galaxy collection install osodevops.kafka_platform:VERSION
+          ```
+          NOTES
+          sed -i "s/VERSION/${VERSION}/" "$RUNNER_TEMP/notes.md"
+
+          # Create tag if running from workflow_dispatch
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            git tag -f "${TAG}"
+            git push origin "${TAG}" --force
+          fi
+
+          # Delete existing release if present, then create fresh
+          gh release delete "${TAG}" --yes 2>/dev/null || true
+          gh release create "${TAG}" \
+            --target "${{ github.sha }}" \
+            --title "${TAG}" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            --generate-notes \
+            "${TARBALL}"
