@@ -1,4 +1,5 @@
 ---
+# Storage setup — shared by both APT and tarball install methods
 - name: Format data disk
   community.general.filesystem:
     dev: "{{ monitoring_data_device }}"
@@ -47,28 +48,104 @@
       loop: "{{ monitoring_reserve_devices }}"
   when: not (molecule_skip_storage | default(false))
 
-- name: Install prerequisite packages
-  ansible.builtin.apt:
-    name:
-      - apt-transport-https
-      - software-properties-common
-      - gnupg
-    state: present
-    update_cache: true
+# --- APT install (default) ---
+- name: Install Grafana via APT
+  when: grafana_install_method == "apt"
+  block:
+    - name: Install prerequisite packages
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - software-properties-common
+          - gnupg
+        state: present
+        update_cache: true
 
-- name: Add Grafana GPG key
-  ansible.builtin.apt_key:
-    url: "{{ grafana_apt_key_url }}"
-    state: present
+    - name: Add Grafana GPG key
+      ansible.builtin.apt_key:
+        url: "{{ grafana_apt_key_url }}"
+        state: present
 
-- name: Add Grafana APT repository
-  ansible.builtin.apt_repository:
-    repo: "{{ grafana_apt_repo }}"
-    state: present
-    filename: grafana
+    - name: Add Grafana APT repository
+      ansible.builtin.apt_repository:
+        repo: "{{ grafana_apt_repo }}"
+        state: present
+        filename: grafana
 
-- name: Install Grafana
-  ansible.builtin.apt:
-    name: grafana
-    state: present
-    update_cache: true
+    - name: Install Grafana
+      ansible.builtin.apt:
+        name: grafana
+        state: present
+        update_cache: true
+
+# --- Tarball install (air-gap / non-Debian) ---
+- name: Install Grafana via tarball
+  when: grafana_install_method == "tarball"
+  block:
+    - name: Create Grafana group
+      ansible.builtin.group:
+        name: "{{ grafana_group }}"
+        system: true
+        state: present
+
+    - name: Create Grafana user
+      ansible.builtin.user:
+        name: "{{ grafana_user }}"
+        group: "{{ grafana_group }}"
+        system: true
+        shell: /usr/sbin/nologin
+        home: "{{ grafana_install_dir }}"
+        create_home: false
+
+    - name: Create Grafana install directory
+      ansible.builtin.file:
+        path: "{{ grafana_install_dir }}"
+        state: directory
+        owner: "{{ grafana_user }}"
+        group: "{{ grafana_group }}"
+        mode: "0755"
+
+    - name: Download Grafana tarball
+      ansible.builtin.get_url:
+        url: "{{ grafana_tarball_url }}"
+        dest: /tmp/grafana.tar.gz
+        mode: "0644"
+
+    - name: Extract Grafana tarball
+      ansible.builtin.unarchive:
+        src: /tmp/grafana.tar.gz
+        dest: "{{ grafana_install_dir }}"
+        remote_src: true
+        extra_opts: [--strip-components=1]
+        owner: "{{ grafana_user }}"
+        group: "{{ grafana_group }}"
+
+    - name: Create Grafana config directory
+      ansible.builtin.file:
+        path: "{{ grafana_config_dir }}"
+        state: directory
+        owner: root
+        group: "{{ grafana_group }}"
+        mode: "0755"
+
+    - name: Create Grafana provisioning directory
+      ansible.builtin.file:
+        path: "{{ grafana_provisioning_dir }}"
+        state: directory
+        owner: root
+        group: "{{ grafana_group }}"
+        mode: "0755"
+
+    - name: Template Grafana systemd service
+      ansible.builtin.template:
+        src: grafana-server.service.j2
+        dest: /etc/systemd/system/grafana-server.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: restart grafana
+
+    - name: Clean up Grafana tarball
+      ansible.builtin.file:
+        path: /tmp/grafana.tar.gz
+        state: absent

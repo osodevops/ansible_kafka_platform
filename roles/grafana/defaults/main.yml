@@ -6,3 +6,8 @@ grafana_config_dir: "/etc/grafana"
 grafana_provisioning_dir: "/etc/grafana/provisioning"
 grafana_apt_key_url: "https://apt.grafana.com/gpg.key"
 grafana_apt_repo: "deb https://apt.grafana.com stable main"
+
+# Install method: "apt" (default) or "tarball" (for air-gap / non-Debian)
+grafana_install_method: "apt"
+grafana_tarball_url: ""
+grafana_install_dir: "/opt/grafana"

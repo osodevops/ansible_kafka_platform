@@ -1,0 +1,65 @@
+---
+# airgap-repo.yml
+# Configures internal OS package repositories for air-gapped deployments.
+# This file is only included when airgap_enabled is true.
+
+# --- RHEL / Rocky / CentOS ---
+
+- name: Copy internal YUM repository file
+  ansible.builtin.copy:
+    src: "{{ airgap_yum_repofile }}"
+    dest: /etc/yum.repos.d/oso-kafka-offline.repo
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - ansible_os_family == 'RedHat'
+    - airgap_yum_repofile | length > 0
+
+- name: Disable external YUM repositories
+  ansible.builtin.shell: |
+    set -euo pipefail
+    yum-config-manager --disable '*' || true
+    yum-config-manager --enable oso-kafka-offline
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when:
+    - ansible_os_family == 'RedHat'
+    - airgap_yum_repofile | length > 0
+
+# --- Ubuntu / Debian ---
+
+- name: Copy internal APT sources list
+  ansible.builtin.copy:
+    src: "{{ airgap_apt_sources_list }}"
+    dest: /etc/apt/sources.list.d/oso-kafka-offline.list
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - ansible_os_family == 'Debian'
+    - airgap_apt_sources_list | length > 0
+
+- name: Disable external APT repositories
+  ansible.builtin.shell: |
+    set -euo pipefail
+    find /etc/apt/sources.list.d/ -name '*.list' \
+      -not -name 'oso-kafka-offline.list' \
+      -exec mv {} {}.disabled \;
+    if [ -f /etc/apt/sources.list ]; then
+      mv /etc/apt/sources.list /etc/apt/sources.list.disabled
+    fi
+  args:
+    executable: /bin/bash
+  changed_when: false
+  when:
+    - ansible_os_family == 'Debian'
+    - airgap_apt_sources_list | length > 0
+
+- name: Update APT cache with internal repository
+  ansible.builtin.apt:
+    update_cache: true
+  when:
+    - ansible_os_family == 'Debian'
+    - airgap_apt_sources_list | length > 0

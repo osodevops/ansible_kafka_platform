@@ -1,4 +1,9 @@
 ---
+- name: Include air-gap repository configuration
+  ansible.builtin.include_tasks: airgap-repo.yml
+  when: airgap_enabled | default(false)
+  tags: [common, airgap]
+
 - name: Include packages tasks
   ansible.builtin.include_tasks: packages.yml
   tags: [common, packages]

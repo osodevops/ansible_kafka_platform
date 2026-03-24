@@ -66,8 +66,8 @@
 - name: Set Grafana data directory ownership
   ansible.builtin.file:
     path: "{{ grafana_data_dir }}"
-    owner: grafana
-    group: grafana
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
     mode: "0755"
     state: directory
 

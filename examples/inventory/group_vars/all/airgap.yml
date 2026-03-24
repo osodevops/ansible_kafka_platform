@@ -1,0 +1,52 @@
+---
+# Air-Gapped Deployment Configuration
+# =====================================
+# Override all internet-facing download URLs to use an internal HTTP
+# repository server. See docs/AIRGAP.md for the full deployment guide.
+#
+# To generate this file automatically from your bundle, run:
+#   scripts/setup-airgap-repo.sh --bundle-dir <path> --generate-inventory
+
+# ---------------------------------------------------------------
+# Core air-gap toggle
+# ---------------------------------------------------------------
+airgap_enabled: true
+airgap_repo_url: "http://repo-server.internal:8080"
+
+# ---------------------------------------------------------------
+# OS Package Repository Override (optional)
+# ---------------------------------------------------------------
+# Provide the path (on the control node) to a custom repo file
+# that points managed nodes at the internal OS package mirror.
+#
+# RHEL/Rocky:
+# airgap_yum_repofile: "/opt/bundle/oso-kafka-offline.repo"
+#
+# Ubuntu/Debian:
+# airgap_apt_sources_list: "/opt/bundle/oso-kafka-offline.list"
+
+# ---------------------------------------------------------------
+# Apache Kafka Binary
+# ---------------------------------------------------------------
+kafka_download_url: "{{ airgap_repo_url }}/kafka/kafka_{{ kafka_scala_version }}-{{ kafka_version }}.tgz"
+
+# ---------------------------------------------------------------
+# JMX Prometheus JavaAgent
+# ---------------------------------------------------------------
+jmx_exporter_download_url: "{{ airgap_repo_url }}/jmx/{{ jmx_exporter_jar }}"
+
+# ---------------------------------------------------------------
+# Prometheus
+# ---------------------------------------------------------------
+prometheus_binary_url: "{{ airgap_repo_url }}/prometheus/prometheus-{{ prometheus_version }}.linux-{{ prometheus_arch }}.tar.gz"
+
+# ---------------------------------------------------------------
+# Grafana (tarball install for air-gap)
+# ---------------------------------------------------------------
+grafana_install_method: "tarball"
+grafana_tarball_url: "{{ airgap_repo_url }}/grafana/grafana-{{ grafana_version }}.linux-amd64.tar.gz"
+
+# ---------------------------------------------------------------
+# Kafbat UI
+# ---------------------------------------------------------------
+kafka_ui_download_url: "{{ airgap_repo_url }}/kafka-ui/{{ kafka_ui_jar }}"

@@ -13,6 +13,7 @@ __pycache__/
 # Ansible
 *.retry
 /tmp/ansible_facts_cache/
+.ansible/
 
 # IDE
 .idea/

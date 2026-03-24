@@ -32,3 +32,8 @@ kafka_sysctl_params:
 # Security limits
 kafka_nofile_limit: 128000
 kafka_nproc_limit: 65536
+
+# Air-gap deployment
+airgap_enabled: false
+airgap_yum_repofile: ""
+airgap_apt_sources_list: ""

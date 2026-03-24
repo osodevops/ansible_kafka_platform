@@ -1,4 +1,4 @@
-.PHONY: help lint test test-tls build publish clean install deploy common controllers brokers monitoring kafka-ui topics acls scram health rolling-restart upgrade analysis
+.PHONY: help lint test test-tls test-airgap build publish clean install deploy common controllers brokers monitoring kafka-ui topics acls scram health rolling-restart upgrade analysis preflight-airgap
 
 INVENTORY ?= examples/inventory/hosts.yml
 PLAYBOOK_DIR := playbooks
@@ -74,3 +74,11 @@ upgrade: ## Upgrade Kafka version
 
 analysis: ## Analyse Kafka topic configuration (read-only)
 	ansible-playbook -i $(INVENTORY) $(PLAYBOOK_DIR)/analysis.yml $(ANSIBLE_OPTS)
+
+# --- Air-Gap ---
+
+preflight-airgap: ## Run air-gap preflight validation
+	ansible-playbook -i $(INVENTORY) $(PLAYBOOK_DIR)/preflight-airgap.yml $(ANSIBLE_OPTS)
+
+test-airgap: ## Run Molecule air-gap scenario
+	molecule test -s airgap

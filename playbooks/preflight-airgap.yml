@@ -1,0 +1,127 @@
+---
+# preflight-airgap.yml
+# Validates that the air-gapped environment is correctly configured
+# before running the main deployment playbooks.
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.yml playbooks/preflight-airgap.yml
+
+- name: Validate control node dependencies
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Check airgap_enabled is set
+      ansible.builtin.assert:
+        that:
+          - airgap_enabled | default(false)
+        fail_msg: >-
+          airgap_enabled is not set to true. Set airgap_enabled: true
+          in your inventory group_vars to enable air-gap mode.
+        success_msg: "Air-gap mode is enabled"
+
+    - name: Verify cryptography Python package is installed
+      ansible.builtin.command: python3 -c "import cryptography; print(cryptography.__version__)"
+      changed_when: false
+      register: crypto_check
+      failed_when: crypto_check.rc != 0
+
+    - name: Display cryptography version
+      ansible.builtin.debug:
+        msg: "cryptography {{ crypto_check.stdout }} is installed"
+
+    - name: Verify osodevops.kafka_platform collection is installed
+      ansible.builtin.command: ansible-galaxy collection list osodevops.kafka_platform
+      changed_when: false
+      register: collection_check
+      failed_when: "'osodevops.kafka_platform' not in collection_check.stdout"
+
+    - name: Verify dependency collections are installed
+      ansible.builtin.command: "ansible-galaxy collection list {{ item }}"
+      changed_when: false
+      loop:
+        - community.general
+        - community.crypto
+        - ansible.posix
+      register: dep_check
+      failed_when: "item not in dep_check.stdout"
+
+- name: Validate internal repository and artifact availability
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Check internal repository is reachable
+      ansible.builtin.uri:
+        url: "{{ airgap_repo_url | default('') }}"
+        method: GET
+        timeout: 10
+        status_code: [200]
+      when: airgap_repo_url is defined and airgap_repo_url | length > 0
+      run_once: true
+
+    - name: Verify Kafka tarball is available
+      ansible.builtin.uri:
+        url: "{{ kafka_download_url }}"
+        method: HEAD
+        timeout: 10
+      when: kafka_download_url is defined
+      run_once: true
+
+    - name: Verify JMX exporter is available
+      ansible.builtin.uri:
+        url: "{{ jmx_exporter_download_url }}"
+        method: HEAD
+        timeout: 10
+      when: jmx_exporter_download_url is defined
+      run_once: true
+
+    - name: Verify Prometheus is available
+      ansible.builtin.uri:
+        url: "{{ prometheus_binary_url | default('') }}"
+        method: HEAD
+        timeout: 10
+      when:
+        - prometheus_binary_url is defined
+        - "'monitoring' in group_names or inventory_hostname == groups['monitoring'][0] | default('')"
+      run_once: true
+
+    - name: Verify Grafana tarball is available
+      ansible.builtin.uri:
+        url: "{{ grafana_tarball_url | default('') }}"
+        method: HEAD
+        timeout: 10
+      when:
+        - grafana_install_method | default('apt') == 'tarball'
+        - grafana_tarball_url is defined
+        - grafana_tarball_url | length > 0
+      run_once: true
+
+    - name: Verify Kafbat UI is available
+      ansible.builtin.uri:
+        url: "{{ kafka_ui_download_url | default('') }}"
+        method: HEAD
+        timeout: 10
+      when:
+        - kafka_ui_download_url is defined
+      run_once: true
+
+    - name: Check disk space on /opt
+      ansible.builtin.shell: df -BG /opt | tail -1 | awk '{print $4}' | tr -d 'G'
+      changed_when: false
+      register: opt_space
+
+    - name: Verify sufficient disk space on /opt (minimum 2 GB)
+      ansible.builtin.assert:
+        that:
+          - opt_space.stdout | int >= 2
+        fail_msg: "Insufficient disk space on /opt: {{ opt_space.stdout }}G available, 2G required"
+        success_msg: "Disk space on /opt: {{ opt_space.stdout }}G available"
+
+    - name: Display preflight summary
+      ansible.builtin.debug:
+        msg: |
+          Air-gap preflight validation passed for {{ inventory_hostname }}
+          - OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          - Architecture: {{ ansible_architecture }}
+          - Disk space (/opt): {{ opt_space.stdout }}G available
+      run_once: false
