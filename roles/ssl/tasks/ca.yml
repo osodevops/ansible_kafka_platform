@@ -62,6 +62,7 @@
     src: "{{ ssl_ca_cert }}"
     dest: "/tmp/kafka-ca/"
     flat: true
+  changed_when: false
   run_once: true
 
 - name: Fetch CA key to control node
@@ -69,6 +70,7 @@
     src: "{{ ssl_ca_key }}"
     dest: "/tmp/kafka-ca/"
     flat: true
+  changed_when: false
   run_once: true
 
 - name: Distribute CA cert to all nodes
