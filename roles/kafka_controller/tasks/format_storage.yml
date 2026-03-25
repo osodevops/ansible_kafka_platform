@@ -31,6 +31,7 @@
     --cluster-id {{ kafka_cluster_uuid }}
   become: true
   become_user: "{{ kafka_user }}"
+  changed_when: true
   when: not metadata_formatted.stat.exists
 
 - name: Start Kafka controller service

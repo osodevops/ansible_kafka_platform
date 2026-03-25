@@ -6,7 +6,7 @@
     owner: "{{ kafka_user }}"
     group: "{{ kafka_group }}"
     mode: "0640"
-  notify: restart kafka broker
+  notify: Restart Kafka broker
 
 - name: Template broker client.properties
   ansible.builtin.template:
@@ -23,7 +23,7 @@
     owner: "{{ kafka_user }}"
     group: "{{ kafka_group }}"
     mode: "0644"
-  notify: restart kafka broker
+  notify: Restart Kafka broker
 
 - name: Template JMX exporter config
   ansible.builtin.template:
@@ -32,7 +32,7 @@
     owner: "{{ kafka_user }}"
     group: "{{ kafka_group }}"
     mode: "0644"
-  notify: restart kafka broker
+  notify: Restart Kafka broker
 
 - name: Template JAAS config for SASL
   ansible.builtin.template:
@@ -41,5 +41,5 @@
     owner: "{{ kafka_user }}"
     group: "{{ kafka_group }}"
     mode: "0640"
-  notify: restart kafka broker
+  notify: Restart Kafka broker
   when: kafka_sasl_enabled | default(true)

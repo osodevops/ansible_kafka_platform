@@ -6,7 +6,7 @@
     owner: "{{ prometheus_user }}"
     group: "{{ prometheus_group }}"
     mode: "0644"
-  notify: restart prometheus
+  notify: Restart Prometheus
 
 - name: Template alert rules
   ansible.builtin.template:
@@ -15,7 +15,7 @@
     owner: "{{ prometheus_user }}"
     group: "{{ prometheus_group }}"
     mode: "0644"
-  notify: restart prometheus
+  notify: Restart Prometheus
 
 - name: Template Prometheus systemd service
   ansible.builtin.template:
@@ -23,8 +23,8 @@
     dest: /etc/systemd/system/prometheus.service
     mode: "0644"
   notify:
-    - reload systemd
-    - restart prometheus
+    - Reload systemd
+    - Restart Prometheus
 
 - name: Enable and start Prometheus
   ansible.builtin.systemd:

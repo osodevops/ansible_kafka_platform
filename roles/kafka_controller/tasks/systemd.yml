@@ -5,8 +5,8 @@
     dest: /etc/systemd/system/kafka.service
     mode: "0644"
   notify:
-    - reload systemd
-    - restart kafka controller
+    - Reload systemd
+    - Restart Kafka controller
 
 - name: Create systemd override directory
   ansible.builtin.file:
@@ -20,8 +20,8 @@
     dest: /etc/systemd/system/kafka.service.d/override.conf
     mode: "0644"
   notify:
-    - reload systemd
-    - restart kafka controller
+    - Reload systemd
+    - Restart Kafka controller
 
 - name: Enable Kafka service
   ansible.builtin.systemd:

@@ -23,4 +23,5 @@
     {% if topic.config is defined %}{% for key, value in topic.config.items() %}--config {{ key }}={{ value }} {% endfor %}{% endif %}
   become: true
   become_user: "{{ kafka_user }}"
+  changed_when: true
   when: topic_check.rc != 0

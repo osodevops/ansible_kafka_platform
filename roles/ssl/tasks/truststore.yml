@@ -13,6 +13,7 @@
     -storetype PKCS12
     -storepass {{ ssl_truststore_password }}
     -noprompt
+  changed_when: true
   when: not truststore_stat.stat.exists
   no_log: true
 

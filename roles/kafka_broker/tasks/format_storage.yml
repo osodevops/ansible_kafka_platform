@@ -18,4 +18,5 @@
     --cluster-id {{ kafka_cluster_uuid }}
   become: true
   become_user: "{{ kafka_user }}"
+  changed_when: true
   when: not broker_formatted.stat.exists

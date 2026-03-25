@@ -6,7 +6,7 @@
     owner: "{{ kafka_user }}"
     group: "{{ kafka_group }}"
     mode: "0640"
-  notify: restart kafka controller
+  notify: Restart Kafka controller
 
 - name: Template controller client.properties
   ansible.builtin.template:
@@ -23,7 +23,7 @@
     owner: "{{ kafka_user }}"
     group: "{{ kafka_group }}"
     mode: "0644"
-  notify: restart kafka controller
+  notify: Restart Kafka controller
 
 - name: Template JMX exporter config
   ansible.builtin.template:
@@ -32,4 +32,4 @@
     owner: "{{ kafka_user }}"
     group: "{{ kafka_group }}"
     mode: "0644"
-  notify: restart kafka controller
+  notify: Restart Kafka controller

@@ -17,6 +17,7 @@
     openssl genrsa -aes256
     -passout pass:{{ ssl_ca_password }}
     -out {{ ssl_ca_key }} 4096
+  changed_when: true
   when: not ca_key_stat.stat.exists
   run_once: true
   no_log: true
@@ -43,6 +44,7 @@
     -out {{ ssl_ca_cert }}
     -days {{ ssl_ca_validity_days }}
     -subj "/CN={{ ssl_ca_common_name }}/O={{ ssl_ca_organization }}"
+  changed_when: true
   when: not ca_cert_stat.stat.exists
   run_once: true
   no_log: true

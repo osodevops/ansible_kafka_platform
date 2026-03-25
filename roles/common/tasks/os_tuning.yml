@@ -4,7 +4,7 @@
     src: sysctl-kafka.conf.j2
     dest: /etc/sysctl.d/99-kafka.conf
     mode: "0644"
-  notify: reload sysctl
+  notify: Reload sysctl
 
 - name: Deploy Kafka security limits
   ansible.builtin.template:

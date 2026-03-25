@@ -1,9 +1,9 @@
 ---
-- name: reload systemd
+- name: Reload systemd
   ansible.builtin.systemd:
     daemon_reload: true
 
-- name: restart kafka broker
+- name: Restart Kafka broker
   ansible.builtin.systemd:
     name: kafka
     state: restarted

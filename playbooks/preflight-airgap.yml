@@ -106,7 +106,9 @@
       run_once: true
 
     - name: Check disk space on /opt
-      ansible.builtin.shell: df -BG /opt | tail -1 | awk '{print $4}' | tr -d 'G'
+      ansible.builtin.shell:
+        cmd: set -o pipefail && df -BG /opt | tail -1 | awk '{print $4}' | tr -d 'G'
+        executable: /bin/bash
       changed_when: false
       register: opt_space
 

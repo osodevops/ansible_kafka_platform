@@ -6,7 +6,7 @@
     owner: "{{ kafka_ui_user }}"
     group: "{{ kafka_ui_group }}"
     mode: "0644"
-  notify: restart kafka-ui
+  notify: Restart kafka-ui
 
 - name: Template Kafka UI systemd service
   ansible.builtin.template:
@@ -14,8 +14,8 @@
     dest: /etc/systemd/system/kafka-ui.service
     mode: "0644"
   notify:
-    - reload systemd
-    - restart kafka-ui
+    - Reload systemd
+    - Restart kafka-ui
 
 - name: Enable and start Kafka UI
   ansible.builtin.systemd:

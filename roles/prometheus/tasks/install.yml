@@ -100,6 +100,7 @@
     cp /tmp/prometheus-*/prometheus /usr/local/bin/
     cp /tmp/prometheus-*/promtool /usr/local/bin/
     chown {{ prometheus_user }}:{{ prometheus_group }} /usr/local/bin/prometheus /usr/local/bin/promtool
+  changed_when: true
   when: not prometheus_binary.stat.exists
 
 - name: Clean up download

@@ -6,7 +6,7 @@
     owner: root
     group: grafana
     mode: "0640"
-  notify: restart grafana
+  notify: Restart Grafana
 
 - name: Create provisioning directories
   ansible.builtin.file:
@@ -27,7 +27,7 @@
     owner: root
     group: grafana
     mode: "0640"
-  notify: restart grafana
+  notify: Restart Grafana
 
 - name: Copy dashboard provisioning config
   ansible.builtin.copy:
@@ -47,7 +47,7 @@
     owner: root
     group: grafana
     mode: "0640"
-  notify: restart grafana
+  notify: Restart Grafana
 
 - name: Copy Kafka dashboard JSON files
   ansible.builtin.copy:
@@ -61,7 +61,7 @@
     - kafka-broker.json
     - kafka-controller.json
     - jvm-metrics.json
-  notify: restart grafana
+  notify: Restart Grafana
 
 - name: Set Grafana data directory ownership
   ansible.builtin.file:

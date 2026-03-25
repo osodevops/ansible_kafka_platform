@@ -5,6 +5,25 @@ All notable changes to this collection will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-25
+
+### Added
+
+- Air-gapped deployment support for disconnected environments
+  - Download, verify, and serve scripts for offline bundle management
+  - `preflight-airgap.yml` playbook for environment validation
+  - Grafana tarball install method alongside APT
+  - Common role air-gap repository configuration
+  - Example inventory variables and comprehensive documentation
+
+### Fixed
+
+- Resolved ansible-lint production profile violations across all roles
+  - Handler names now start with uppercase (name[casing])
+  - Shell pipe tasks use `set -o pipefail` (risky-shell-pipe)
+  - All command/shell tasks declare `changed_when` (no-changed-when)
+- Updated yamllint configuration for ansible-lint compatibility
+
 ## [1.0.1] - 2026-02-11
 
 ### Fixed

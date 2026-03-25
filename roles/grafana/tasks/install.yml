@@ -143,7 +143,7 @@
         owner: root
         group: root
         mode: "0644"
-      notify: restart grafana
+      notify: Restart Grafana
 
     - name: Clean up Grafana tarball
       ansible.builtin.file:
